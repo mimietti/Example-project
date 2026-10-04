@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#F4F1EA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Kenttäeditori · Puuttuva pala</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap">
+<style>
+/* Layout: työkalut vasemmalla, ruudukko keskellä, palat/vartijat/tarkistus oikealla. Kapealla näytöllä pinoutuu. */
+:root{
+  --birch:#E8EBE6; --paper:#F6F6F2; --ink:#2C3A41; --mute:#6E797C; --line:#D3D8D2;
+  --fjord:#3D6F79; --lingon:#BE4A3F; --mustard:#D8A73A; --ok:#2F8F5B;
+  --floor:#C8463B; --wall:#3E6E8E; --belt:#2F8F5B; --bg:#F4F1EA;
+  --f:'Jost','Futura','Avenir Next','Century Gothic',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--birch);color:var(--ink);font:14px/1.4 var(--f);
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+[hidden]{display:none!important}
+.app{height:100%;display:grid;grid-template-columns:auto minmax(0,1fr) 280px;grid-template-rows:auto minmax(0,1fr);gap:10px;padding-block:10px;padding-inline:16px}
+header{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+header .back{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-decoration:none;margin-right:6px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;-webkit-user-select:text;user-select:text}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--fjord);outline-offset:1px}
+#name{font-size:18px;font-weight:500;width:14em;max-width:100%}
+#hint{flex:1;min-width:12em}
+button{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+button.primary{background:var(--fjord);border-color:var(--fjord);color:#fff}
+button:disabled{opacity:.45}
+.tools{display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding-right:2px}
+.tool{display:flex;align-items:center;gap:8px;padding:6px 10px;min-width:118px;text-align:left}
+.tool canvas{width:28px;height:28px;flex:none}
+.tool.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tools .sep{height:1px;background:var(--line);margin:4px 0}
+.stage{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+#grid{display:block;border-radius:6px;touch-action:none;box-shadow:0 0 0 1.5px rgba(44,58,65,.12)}
+.coord{position:absolute;left:8px;bottom:6px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.side{display:flex;flex-direction:column;gap:12px;overflow-y:auto;min-width:0}
+.panel{background:var(--paper);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.panel h2{margin:0;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.piece{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;align-items:center}
+.piece .n{font-weight:600;width:1.4em;text-align:center;border-radius:6px;color:#fff}
+.piece select{padding:6px}
+.piece button{padding:6px 9px;font-size:14px}
+.piece button.on{background:var(--mustard);border-color:var(--mustard);color:#fff}
+.small{font-size:13px;color:var(--mute);margin:0}
+.guard{display:flex;justify-content:space-between;align-items:center;font-variant-numeric:tabular-nums}
+.guard button{padding:4px 9px;font-size:13px}
+.results{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.results .row{display:flex;gap:8px;align-items:baseline}
+.results .mark{width:1.2em;font-weight:700;text-align:center;flex:none}
+.results .good .mark{color:var(--ok)} .results .bad .mark{color:var(--lingon)} .results .warn .mark{color:var(--mustard)}
+.overlay{position:fixed;inset:0;background:rgba(44,58,65,.35);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+.card{background:var(--paper);border-radius:16px;padding:20px 22px;box-shadow:0 10px 40px rgba(44,58,65,.25);display:flex;flex-direction:column;gap:12px;max-width:min(640px,100%);max-height:90%;overflow:auto;width:100%}
+.card h3{margin:0;font-size:20px;font-weight:500}
+.card h4{margin:6px 0 0;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.card .rowb{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.list{display:flex;flex-wrap:wrap;gap:6px}
+.list .item{display:flex;gap:2px}
+.list .item button:first-child{border-top-right-radius:0;border-bottom-right-radius:0}
+.list .item button.del{border-top-left-radius:0;border-bottom-left-radius:0;color:var(--lingon);padding-inline:9px}
+textarea{width:100%;min-height:260px;font:12px/1.35 ui-monospace,Menlo,monospace;white-space:pre}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:999px;font-size:15px;z-index:9;pointer-events:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto auto auto;height:auto}
+  .tools{flex-direction:row;flex-wrap:wrap}
+  .tool{min-width:0}
+  .stage{height:62vw}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a class="back" href="index.html">← Peli</a>
+    <input id="name" aria-label="Kentän nimi" placeholder="Kentän nimi" maxlength="40">
+    <input id="hint" aria-label="Vihje" placeholder="Vihje pelaajalle" maxlength="140">
+    <button id="newBtn">Uusi</button>
+    <button id="openBtn">Avaa</button>
+    <button id="saveBtn">Tallenna</button>
+    <button id="textBtn">Teksti</button>
+    <button id="checkBtn">Tarkista</button>
+    <button id="testBtn" class="primary">Testaa</button>
+  </header>
+
+  <nav class="tools" id="tools" aria-label="Työkalut"></nav>
+
+  <div class="stage" id="stage">
+    <canvas id="grid"></canvas>
+    <div class="coord" id="coord"></div>
+  </div>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>Pelaajan palat</h2>
+      <div id="pieces"></div>
+      <button id="addPiece">+ Lisää pala</button>
+      <p class="small">Paina palan Ratkaisu-nappia ja napauta ruudukosta kohta, johon pala kuuluu. Tarkistus käyttää tätä sijoitusta.</p>
+    </section>
+    <section class="panel">
+      <h2>Vartijat</h2>
+      <div id="guards"></div>
+      <p class="small">Valitse Vartija-työkalu ja vedä ruudukossa vaakasuoraan rivillä, jolla vartija kävelee (lattian yläpuolella). Vetosuunta on liikkeen alkusuunta.</p>
+    </section>
+    <section class="panel">
+      <h2>Tarkistus</h2>
+      <label class="small"><input type="checkbox" id="altChk"> Laske kaikki toimivat sijoitukset (vain yhden palan kentät, hidas)</label>
+      <div class="results" id="results"><p class="small">Ei vielä tarkistettu.</p></div>
+    </section>
+  </aside>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/engine.js"></script>
+<script src="js/levels.js"></script>
+<script>
+(()=>{
+const {COLS,ROWS,freeFor}=PPEngine;
+const $=id=>document.getElementById(id);
+const C={floor:'#C8463B',wall:'#3E6E8E',belt:'#2F8F5B',bg:'#F4F1EA',ink:'#2C3A41',key:'#D9A12A',lingon:'#BE4A3F',fjord:'#3D6F79',mustard:'#D8A73A',line:'rgba(44,58,65,.10)'};
+const PCOL=['#D8A73A','#3D6F79','#8A5AA8','#2F8F5B'];
+const TYPE_NAME={1:'Lattia',3:'Sulava',4:'Hihna ←',5:'Hihna →'};
+
+const TOOLS=[
+  {id:'.', label:'Pyyhi'},
+  {id:'=', label:'Lattia'},
+  {id:'#', label:'Seinä'},
+  {id:'~', label:'Sulava'},
+  {id:'<', label:'Hihna ←'},
+  {id:'>', label:'Hihna →'},
+  {id:'^', label:'Piikki'},
+  {sep:true},
+  {id:'k', label:'Avain'},
+  {id:'P', label:'Aloitus'},
+  {id:'E', label:'Ovi'},
+  {id:'G', label:'Vartija'},
+];
+
+// ---------- tila ----------
+let L, tool='=', solK=-1, dirty=false;
+function blank(){
+  const map=[]; for(let r=0;r<ROWS;r++){ let s=''; for(let c=0;c<COLS;c++) s += (r===0||r===ROWS-1||c===0||c===COLS-1)? '#' : '.'; map.push(s); }
+  map[ROWS-2]= '#' + '='.repeat(COLS-2) + '#';
+  return {name:'Uusi kenttä',hint:'',pieces:[{type:1,len:2}],sol:[null],guards:[],map:setCh(setCh(map,ROWS-3,2,'P'),ROWS-3,COLS-3,'E')};
+}
+function setCh(map,r,c,ch){ const m=map.slice(); m[r]=m[r].slice(0,c)+ch+m[r].slice(c+1); return m; }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function normalize(o){
+  const x=clone(o); x.guards=x.guards||[]; x.sol=(x.sol||[]).slice(0,x.pieces.length);
+  while(x.sol.length<x.pieces.length) x.sol.push(null);
+  x.sol=x.sol.map(s=>s? {r:s.r,c:s.c} : null); delete x.custom; return x;
+}
+function exportLevel(){
+  const o={name:L.name.trim()||'Nimetön',hint:L.hint.trim(),pieces:L.pieces.map(p=>({type:p.type,len:p.len})),
+    sol:L.sol.map(s=>s?{r:s.r,c:s.c}:null),map:L.map.slice()};
+  if(L.guards.length) o.guards=L.guards.map(g=>({r:g.r,c0:g.c0,c1:g.c1,dir:g.dir}));
+  return o;
+}
+const store={
+  get(k,d){ try{ const v=localStorage.getItem(k); return v==null? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } }
+};
+function changed(){ dirty=true; store.set('pp-editor-draft',L); clearResults(); draw(); }
+
+// ---------- työkalupalkki ----------
+function buildTools(){
+  const el=$('tools'); el.innerHTML='';
+  TOOLS.forEach(t=>{
+    if(t.sep){ const d=document.createElement('div'); d.className='sep'; el.appendChild(d); return; }
+    const b=document.createElement('button'); b.className='tool'; b.dataset.t=t.id;
+    b.innerHTML='<canvas width="56" height="56"></canvas><span>'+t.label+'</span>';
+    b.onclick=()=>{ tool=t.id; solK=-1; updateTools(); renderPieces(); };
+    el.appendChild(b);
+    const g=b.querySelector('canvas').getContext('2d'); g.scale(2,2);
+    if(t.id==='G') drawGuardIcon(g,0,0,28); else drawCell(g,t.id,0,0,28,{icon:true});
+  });
+  updateTools();
+}
+function updateTools(){ document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on', solK<0 && b.dataset.t===tool)); }
+
+// ---------- piirto ----------
+const cv=$('grid'), ctx=cv.getContext('2d'); let ts=24, dpr=1;
+function resize(){
+  const s=$('stage').getBoundingClientRect();
+  ts=Math.max(10,Math.floor(Math.min(s.width/COLS,s.height/ROWS)));
+  dpr=window.devicePixelRatio||1;
+  cv.style.width=ts*COLS+'px'; cv.style.height=ts*ROWS+'px';
+  cv.width=Math.round(ts*COLS*dpr); cv.height=Math.round(ts*ROWS*dpr); draw();
+}
+function rr(g,x,y,w,h,r){ g.beginPath(); g.roundRect? g.roundRect(x,y,w,h,r) : g.rect(x,y,w,h); }
+function drawCell(g,ch,x,y,s,o={}){
+  if(o.icon){ g.fillStyle=C.bg; g.fillRect(x,y,s,s); }
+  if(ch==='='){ g.fillStyle=C.floor; rr(g,x+.5,y+(o.icon?s*.4:0),s-1,s*.32,s*.08); g.fill(); }
+  else if(ch==='#'){ g.fillStyle=C.wall; g.fillRect(x,y,s+.5,s+.5); g.strokeStyle='rgba(255,255,255,.3)'; g.lineWidth=1; g.beginPath(); g.moveTo(x,y+s/2); g.lineTo(x+s,y+s/2); g.stroke(); }
+  else if(ch==='~'){ g.fillStyle='#E7A39C'; rr(g,x+1,y+(o.icon?s*.4:0),s-2,s*.32,s*.06); g.fill(); g.fillStyle=C.bg; for(let k=0;k<3;k++){ g.beginPath(); g.arc(x+s*(.2+.3*k),y+(o.icon?s*.4:0)+s*.16,s*.05,0,7); g.fill(); } }
+  else if(ch==='<'||ch==='>'){ const d=ch==='>'?1:-1, yy=y+(o.icon?s*.35:0), h=s*.44; g.fillStyle=C.belt; rr(g,x+.5,yy,s-1,h,h/3); g.fill();
+    g.fillStyle='#fff'; const cx=x+s/2, aw=s*.26; g.beginPath(); g.moveTo(cx-d*aw,yy+h*.1); g.lineTo(cx+d*aw,yy+h*.5); g.lineTo(cx-d*aw,yy+h*.9); g.lineTo(cx-d*aw*.3,yy+h*.5); g.closePath(); g.fill(); }
+  else if(ch==='^'){ for(let k=0;k<3;k++){ const w=s/3; g.fillStyle=C.ink; g.beginPath(); g.moveTo(x+k*w,y+s); g.lineTo(x+k*w+w/2,y+s*.45); g.lineTo(x+(k+1)*w,y+s); g.fill(); } }
+  else if(ch==='k'){ const cx=x+s/2, cy=y+s/2; g.strokeStyle=C.key; g.lineWidth=Math.max(2,s*.1); g.lineCap='round';
+    g.beginPath(); g.arc(cx-s*.12,cy,s*.15,0,7); g.stroke(); g.beginPath(); g.moveTo(cx+s*.03,cy); g.lineTo(cx+s*.32,cy); g.moveTo(cx+s*.23,cy); g.lineTo(cx+s*.23,cy+s*.13); g.stroke(); }
+  else if(ch==='P'){ const h=o.icon? s : s*2, top=o.icon? y : y-s; const w=o.icon? s*.8 : s; const xx=o.icon? x+s*.1 : x;
+    g.fillStyle=C.ink; g.fillRect(xx+w*.3,top+h*.82,w*.14,h*.18); g.fillRect(xx+w*.56,top+h*.82,w*.14,h*.18);
+    g.fillStyle=C.floor; rr(g,xx+w*.2,top+h*.38,w*.6,h*.46,w*.16); g.fill();
+    g.fillStyle='#fff'; g.strokeStyle=C.ink; g.lineWidth=1.5; g.beginPath(); g.arc(xx+w*.5,top+h*.24,w*.22,0,7); g.fill(); g.stroke();
+    g.fillStyle=C.key; g.beginPath(); g.arc(xx+w*.5,top+h*.21,w*.24,Math.PI,0); g.fill(); }
+  else if(ch==='E'){ const h=o.icon? s*.95 : s*1.85, top=o.icon? y+s*.05 : y-s*.85, dx=x+s*.15, dw=s*.7;
+    g.fillStyle=C.fjord; g.beginPath(); g.moveTo(dx,top+h); g.lineTo(dx,top+dw/2); g.arc(dx+dw/2,top+dw/2,dw/2,Math.PI,0); g.lineTo(dx+dw,top+h); g.fill();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(dx+dw/2,top+dw*.65,dw*.16,0,7); g.fill(); }
+  else if(ch==='.' && o.icon){ g.strokeStyle=C.lingon; g.lineWidth=2.5; g.beginPath(); g.moveTo(x+s*.25,y+s*.25); g.lineTo(x+s*.75,y+s*.75); g.moveTo(x+s*.75,y+s*.25); g.lineTo(x+s*.25,y+s*.75); g.stroke(); }
+}
+function drawGuardIcon(g,x,y,s){ g.fillStyle=C.bg; g.fillRect(x,y,s,s); g.fillStyle='#D9893A'; rr(g,x+s*.2,y+s*.1,s*.6,s*.8,s*.28); g.fill();
+  g.fillStyle='#fff'; g.beginPath(); g.arc(x+s*.58,y+s*.38,s*.1,0,7); g.fill(); g.fillStyle=C.ink; g.beginPath(); g.arc(x+s*.62,y+s*.38,s*.05,0,7); g.fill(); }
+let dragGuard=null, hover=null;
+function draw(){
+  if(!L) return;
+  const g=ctx; g.setTransform(dpr,0,0,dpr,0,0);
+  g.fillStyle=C.bg; g.fillRect(0,0,ts*COLS,ts*ROWS);
+  g.strokeStyle=C.line; g.lineWidth=1; g.beginPath();
+  for(let c=1;c<COLS;c++){ g.moveTo(c*ts+.5,0); g.lineTo(c*ts+.5,ts*ROWS); }
+  for(let r=1;r<ROWS;r++){ g.moveTo(0,r*ts+.5); g.lineTo(ts*COLS,r*ts+.5); }
+  g.stroke();
+  // ensin laatat, sitten hahmot päälle
+  const late=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){ const ch=L.map[r][c]; if(ch==='.') continue; if(ch==='P'||ch==='E'||ch==='k') late.push([ch,r,c]); else drawCell(g,ch,c*ts,r*ts,ts); }
+  // vartijat
+  const gs=L.guards.slice(); if(dragGuard) gs.push(dragGuard);
+  gs.forEach((G,i)=>{
+    const a=Math.min(G.c0,G.c1), b=Math.max(G.c0,G.c1), y=G.r*ts+ts/2;
+    g.strokeStyle='#D9893A'; g.lineWidth=2; g.setLineDash([5,4]); g.beginPath(); g.moveTo(a*ts+ts/2,y); g.lineTo(b*ts+ts/2,y); g.stroke(); g.setLineDash([]);
+    const sc = G.dir>0? a : b; const x=sc*ts;
+    g.fillStyle='#D9893A'; g.globalAlpha= G===dragGuard? .6 : .9; rr(g,x+ts*.1,(G.r-1)*ts+ts*.5,ts*.8,ts*1.5,ts*.35); g.fill(); g.globalAlpha=1;
+    // nuoli alkusuuntaan
+    g.fillStyle='#fff'; const cx=x+ts/2, cy=G.r*ts+ts*.2, d=G.dir; g.beginPath(); g.moveTo(cx-d*ts*.18,cy-ts*.16); g.lineTo(cx+d*ts*.2,cy); g.lineTo(cx-d*ts*.18,cy+ts*.16); g.fill();
+  });
+  late.forEach(([ch,r,c])=>drawCell(g,ch,c*ts,r*ts,ts));
+  // ratkaisun palat
+  L.sol.forEach((s,k)=>{ if(!s) return; const p=L.pieces[k]; const ok=freeFor(exportLevel(),{type:p.type,len:p.len,r:s.r,c:s.c},L.sol.map((q,j)=>j!==k&&q?{type:L.pieces[j].type,len:L.pieces[j].len,r:q.r,c:q.c}:null).filter(Boolean));
+    for(let j=0;j<p.len;j++){ g.globalAlpha=.55; drawCell(g, p.type===1?'=':p.type===3?'~':p.type===4?'<':'>', (s.c+j)*ts, s.r*ts, ts); g.globalAlpha=1; }
+    g.strokeStyle= ok? PCOL[k%PCOL.length] : C.lingon; g.lineWidth=2.5; g.setLineDash([5,3]); rr(g,s.c*ts+1,s.r*ts+1,p.len*ts-2,ts-2,5); g.stroke(); g.setLineDash([]);
+    g.fillStyle= ok? PCOL[k%PCOL.length] : C.lingon; g.font=`600 ${Math.round(ts*.5)}px Jost, system-ui`; g.textAlign='center'; g.fillText(String(k+1), s.c*ts+p.len*ts/2, s.r*ts+ts*.85);
+  });
+  // osoitin
+  if(hover){ g.strokeStyle=C.fjord; g.lineWidth=2; const w = solK>=0? L.pieces[solK].len : 1; g.strokeRect(hover.c*ts+1,hover.r*ts+1,w*ts-2,ts-2); }
+}
+
+// ---------- maalaus ----------
+let painting=false;
+function cellAt(e){ const b=cv.getBoundingClientRect(); const c=Math.floor((e.clientX-b.left)/b.width*COLS), r=Math.floor((e.clientY-b.top)/b.height*ROWS);
+  return (r<0||r>=ROWS||c<0||c>=COLS)? null : {r,c}; }
+function paint(p){
+  if(!p) return;
+  const cur=L.map[p.r][p.c];
+  if(tool==='P'||tool==='E'){ L.map=L.map.map(row=>row.split(tool).join('.')); }
+  if(cur===tool) return;
+  L.map=setCh(L.map,p.r,p.c,tool);
+  if(tool==='.'){ L.guards=L.guards.filter(G=>!(p.r>=G.r-1&&p.r<=G.r && p.c>=Math.min(G.c0,G.c1) && p.c<=Math.max(G.c0,G.c1))); renderGuards(); }
+  changed();
+}
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault(); cv.setPointerCapture(e.pointerId); const p=cellAt(e); if(!p) return;
+  if(solK>=0){ placeSol(p); return; }
+  if(tool==='G'){ dragGuard={r:p.r,c0:p.c,c1:p.c,dir:1,start:p.c}; draw(); return; }
+  painting=true; paint(p);
+});
+cv.addEventListener('pointermove',e=>{
+  const p=cellAt(e); hover=p; $('coord').textContent=p? `rivi ${p.r}, sarake ${p.c}` : '';
+  if(dragGuard && p){ dragGuard.c0=Math.min(dragGuard.start,p.c); dragGuard.c1=Math.max(dragGuard.start,p.c); dragGuard.dir = p.c<dragGuard.start? -1 : 1; }
+  else if(painting && p && tool!=='P' && tool!=='E') paint(p);
+  draw();
+});
+function endPtr(){
+  painting=false;
+  if(dragGuard){ const G=dragGuard; dragGuard=null;
+    if(G.c1>G.c0){ L.guards.push({r:G.r,c0:G.c0,c1:G.c1,dir:G.dir}); renderGuards(); changed(); }
+    else { toast('Vedä vartijan reitti vähintään kahden ruudun matkalle'); draw(); } }
+}
+cv.addEventListener('pointerup',endPtr); cv.addEventListener('pointercancel',endPtr);
+cv.addEventListener('pointerleave',()=>{ hover=null; $('coord').textContent=''; draw(); });
+
+function placeSol(p){
+  const k=solK, P=L.pieces[k]; const c=Math.min(p.c, COLS-P.len);
+  const others=L.sol.map((q,j)=>j!==k&&q?{type:L.pieces[j].type,len:L.pieces[j].len,r:q.r,c:q.c}:null).filter(Boolean);
+  if(!freeFor(exportLevel(),{type:P.type,len:P.len,r:p.r,c},others)){ toast('Pala ei mahdu tähän: ruudut eivät ole tyhjiä'); return; }
+  L.sol[k]={r:p.r,c}; solK=-1; updateTools(); renderPieces(); changed();
+}
+
+// ---------- palat ja vartijat ----------
+function renderPieces(){
+  const el=$('pieces'); el.innerHTML='';
+  L.pieces.forEach((p,k)=>{
+    const d=document.createElement('div'); d.className='piece';
+    d.innerHTML=`<span class="n" style="background:${PCOL[k%PCOL.length]}">${k+1}</span>
+      <select aria-label="Palan ${k+1} tyyppi">${[1,3,5,4].map(t=>`<option value="${t}" ${p.type===t?'selected':''}>${TYPE_NAME[t]}</option>`).join('')}</select>
+      <select aria-label="Palan ${k+1} pituus">${[1,2,3,4].map(n=>`<option value="${n}" ${p.len===n?'selected':''}>${n}</option>`).join('')}</select>
+      <button class="${solK===k?'on':''}" title="Aseta tarkoitettu paikka">${L.sol[k]?'Siirrä':'Ratkaisu'}</button>
+      <button title="Poista pala" aria-label="Poista pala ${k+1}">✕</button>`;
+    const [sT,sN]=d.querySelectorAll('select'), [bS,bX]=d.querySelectorAll('button');
+    sT.onchange=()=>{ p.type=+sT.value; changed(); };
+    sN.onchange=()=>{ p.len=+sN.value; if(L.sol[k] && L.sol[k].c+p.len>COLS) L.sol[k]=null; changed(); renderPieces(); };
+    bS.onclick=()=>{ solK = solK===k? -1 : k; updateTools(); renderPieces(); if(solK>=0) toast(`Napauta kohtaa, johon pala ${k+1} kuuluu`); };
+    bX.onclick=()=>{ L.pieces.splice(k,1); L.sol.splice(k,1); solK=-1; renderPieces(); changed(); };
+    el.appendChild(d);
+  });
+  $('addPiece').disabled = L.pieces.length>=4;
+}
+$('addPiece').onclick=()=>{ L.pieces.push({type:1,len:2}); L.sol.push(null); renderPieces(); changed(); };
+function renderGuards(){
+  const el=$('guards'); el.innerHTML='';
+  if(!L.guards.length){ el.innerHTML='<p class="small">Ei vartijoita.</p>'; return; }
+  L.guards.forEach((G,i)=>{ const d=document.createElement('div'); d.className='guard';
+    d.innerHTML=`<span>Rivi ${G.r}: sarakkeet ${G.c0}–${G.c1} ${G.dir>0?'→':'←'}</span><button aria-label="Poista vartija">Poista</button>`;
+    d.querySelector('button').onclick=()=>{ L.guards.splice(i,1); renderGuards(); changed(); };
+    el.appendChild(d); });
+}
+
+// ---------- yleiset ----------
+function toast(t){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,2200); }
+function esc(s){ return String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+function modal(html){ const o=$('overlay'); o.innerHTML='<div class="card">'+html+'</div>'; o.hidden=false; o.onclick=e=>{ if(e.target===o) closeModal(); }; return o; }
+function closeModal(){ $('overlay').hidden=true; $('overlay').innerHTML=''; }
+function load(o){ L=normalize(o); $('name').value=L.name; $('hint').value=L.hint||''; solK=-1; renderPieces(); renderGuards(); updateTools(); clearResults(); store.set('pp-editor-draft',L); draw(); }
+$('name').oninput=()=>{ L.name=$('name').value; store.set('pp-editor-draft',L); };
+$('hint').oninput=()=>{ L.hint=$('hint').value; store.set('pp-editor-draft',L); };
+
+function problems(){
+  const m=L.map.join(''); const out=[];
+  if(!m.includes('P')) out.push('Kentästä puuttuu aloituspaikka.');
+  if(!m.includes('E')) out.push('Kentästä puuttuu ovi.');
+  const pr=L.map.findIndex(r=>r.includes('P'));
+  if(pr===0) out.push('Aloituspaikka ei voi olla ylimmällä rivillä.');
+  return out;
+}
+
+$('newBtn').onclick=()=>{
+  const o=modal(`<h3>Uusi kenttä</h3><p class="small">Nykyinen luonnos korvataan. Tallennetut kentät säilyvät.</p><div class="rowb"><button id="mC">Peru</button><button id="mOk" class="primary">Aloita tyhjästä</button></div>`);
+  o.querySelector('#mC').onclick=closeModal; o.querySelector('#mOk').onclick=()=>{ load(blank()); closeModal(); };
+};
+$('openBtn').onclick=()=>{
+  const own=store.get('pp-custom-levels',[]);
+  const o=modal(`<h3>Avaa kenttä</h3>
+    <h4>Omat kentät</h4><div class="list" id="ownL">${own.length? own.map((x,i)=>`<span class="item"><button data-o="${i}">${esc(x.name)}</button><button class="del" data-d="${i}" aria-label="Poista ${esc(x.name)}">✕</button></span>`).join('') : '<p class="small">Ei vielä tallennettuja kenttiä.</p>'}</div>
+    <h4>Pelin kentät (avautuu kopiona)</h4><div class="list">${LEVELS.map((x,i)=>`<button data-b="${i}">${i+1}. ${esc(x.name)}</button>`).join('')}</div>
+    <div class="rowb"><button id="mC">Sulje</button></div>`);
+  o.querySelector('#mC').onclick=closeModal;
+  o.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ load(own[+b.dataset.o]); closeModal(); toast('Avattu: '+own[+b.dataset.o].name); });
+  o.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{ const x=clone(LEVELS[+b.dataset.b]); x.name=x.name+' (kopio)'; load(x); closeModal(); });
+  o.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.d; const nm=own[i].name;
+    b.parentElement.innerHTML=`<button class="del" data-y="${i}">Poista ${esc(nm)}?</button>`;
+    o.querySelector(`[data-y="${i}"]`).onclick=()=>{ own.splice(i,1); store.set('pp-custom-levels',own); toast('Poistettu: '+nm); closeModal(); $('openBtn').onclick(); }; });
+};
+$('saveBtn').onclick=()=>{
+  const x=exportLevel(); const own=store.get('pp-custom-levels',[]);
+  const i=own.findIndex(o=>o.name===x.name);
+  if(i>=0) own[i]=x; else own.push(x);
+  if(store.set('pp-custom-levels',own)) toast(i>=0? 'Tallennettu (korvasi saman nimisen)' : 'Tallennettu omiin kenttiin'); else toast('Tallennus epäonnistui: selaimen tallennustila ei ole käytettävissä');
+};
+$('testBtn').onclick=()=>{
+  const p=problems(); if(p.length){ toast(p[0]); return; }
+  if(!store.set('pp-editor-test',exportLevel())){ toast('Testi ei käynnisty: selaimen tallennustila ei ole käytettävissä'); return; }
+  location.href='index.html#testi';
+};
+$('textBtn').onclick=()=>{
+  const txt=JSON.stringify(exportLevel(),null,1).replace(/\n\s*("[#=~<>^kEP.]{28}")/g,'\n  $1').replace(/\{\n\s*"r"/g,'{"r"');
+  const o=modal(`<h3>Kenttä tekstinä</h3><p class="small">Kopioi teksti ja liitä se Claudelle, niin kenttä voidaan lisätä peliin. Voit myös liittää tähän tekstin ja tuoda kentän.</p>
+    <textarea id="tx" spellcheck="false"></textarea><div class="rowb"><button id="mC">Sulje</button><button id="mImp">Tuo tekstistä</button><button id="mCopy" class="primary">Kopioi</button></div>`);
+  const ta=o.querySelector('#tx'); ta.value=txt;
+  o.querySelector('#mC').onclick=closeModal;
+  o.querySelector('#mCopy').onclick=()=>{ const done=()=>toast('Kopioitu leikepöydälle'); const fb=()=>{ ta.focus(); ta.select(); toast('Teksti valittu: kopioi se'); };
+    try{ navigator.clipboard.writeText(ta.value).then(done,fb); }catch(e){ fb(); } };
+  o.querySelector('#mImp').onclick=()=>{ try{ let x=JSON.parse(ta.value); if(Array.isArray(x)) x=x[0];
+      if(!x || !Array.isArray(x.map) || x.map.length!==ROWS || x.map.some(r=>r.length!==COLS) || !Array.isArray(x.pieces)) throw new Error('kartan koon pitää olla 28 × 16');
+      load(x); closeModal(); toast('Kenttä tuotu'); }catch(e){ toast('Tekstiä ei voitu lukea: '+e.message); } };
+};
+
+// ---------- tarkistus ----------
+let worker=null;
+function clearResults(){ if(worker){ worker.terminate(); worker=null; $('checkBtn').disabled=false; } $('results').innerHTML='<p class="small">Ei vielä tarkistettu.</p>'; }
+function row(cls,mark,text){ return `<div class="row ${cls}"><span class="mark">${mark}</span><span>${text}</span></div>`; }
+$('checkBtn').onclick=()=>{
+  const p=problems(); if(p.length){ $('results').innerHTML=p.map(t=>row('bad','✕',t)).join(''); return; }
+  clearResults();
+  const lvl=exportLevel(), alt=$('altChk').checked;
+  $('results').innerHTML=row('warn','…','Tarkistetaan…'); $('checkBtn').disabled=true;
+  try{ worker=new Worker('js/solver-worker.js'); }catch(e){ $('results').innerHTML=row('bad','✕','Tarkistus ei käynnisty tässä selaimessa.'); $('checkBtn').disabled=false; return; }
+  const t0=Date.now();
+  worker.onmessage=e=>{
+    const m=e.data;
+    if(m.progress){ $('results').innerHTML=row('warn','…',esc(m.progress)); return; }
+    $('checkBtn').disabled=false; worker.terminate(); worker=null;
+    if(m.error){ $('results').innerHTML=row('bad','✕','Virhe: '+esc(m.error)); return; }
+    const r=m.res, out=[];
+    const yn=(v,good,txtT,txtF,txtN)=> v===null? row('warn','?',txtN) : (v===good? row('good','✓',v?txtT:txtF) : row('bad','✕',v?txtT:txtF));
+    out.push(yn(r.none,false,'Kenttä menee läpi ilman paloja','Ilman paloja kenttä ei mene läpi','Ilman paloja: ei ratkennut aikarajassa'));
+    if(r.missingSol) out.push(row('warn','!','Aseta jokaiselle palalle ratkaisupaikka, niin ratkaisu tarkistetaan.'));
+    else out.push(yn(r.intended,true,'Ratkaisulla kenttä menee läpi','Ratkaisulla kenttä ei mene läpi','Ratkaisu: ei ratkennut aikarajassa'));
+    if(r.dropOne) r.dropOne.forEach((v,k)=>out.push(yn(v,false,`Pala ${k+1} on turha: kenttä menee läpi ilman sitä`,`Pala ${k+1} tarvitaan`,`Pala ${k+1}: ei ratkennut aikarajassa`)));
+    if(r.alternatives) out.push(row('warn','#',`Toimivia sijoituksia yhdelle palalle: ${r.alternatives.count}`));
+    out.push(`<p class="small">Aikaa kului ${((Date.now()-t0)/1000).toFixed(1)} s.</p>`);
+    $('results').innerHTML=out.join('');
+  };
+  worker.postMessage({level:lvl, opts:{alternatives:alt, limit:400000}});
+};
+
+// ---------- käynnistys ----------
+buildTools();
+const draft=store.get('pp-editor-draft',null);
+load(draft && Array.isArray(draft.map) && draft.map.length===ROWS ? draft : blank());
+addEventListener('resize',resize); new ResizeObserver(resize).observe($('stage')); resize();
+})();
+</script>
+</body>
+</html>

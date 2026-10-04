@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Puuttuva pala">
+<meta name="theme-color" content="#F4F1EA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Puuttuva pala</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen game. Top bar (level + piece), board fills the middle at 20:12, touch controls along the bottom. */
+:root{
+  --birch:#E8EBE6;   /* page ground */
+  --paper:#F6F6F2;   /* board */
+  --ink:#2C3A41;     /* floors, text */
+  --oak:#CDB28C;     /* walls */
+  --sand:#E2D3B6;    /* melting floor */
+  --fjord:#3D6F79;   /* exit, accent */
+  --lingon:#BE4A3F;  /* danger */
+  --mustard:#D8A73A; /* the player's piece */
+  --mute:#7C878A;
+  --line:#D3D8D2;
+  --f-display:'Jost','Futura','Avenir Next','Century Gothic',system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%;margin:0}
+body{font-size:14px;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--birch);color:var(--ink);font-family:var(--f-display);margin:0;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding-block:10px;padding-inline:16px;box-sizing:border-box;max-width:1200px;margin:0 auto}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.lvl{display:flex;align-items:baseline;gap:10px;min-width:0;flex:1}
+.lvl .num{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lvl h1{font-size:22px;font-weight:500;margin:0;white-space:nowrap}
+.lvl .hint{font-size:15px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tools{display:flex;gap:8px;align-items:center}
+button{font-family:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;
+  font-size:16px;padding:10px 14px;cursor:pointer;touch-action:none}
+button:focus-visible{outline:3px solid var(--fjord);outline-offset:2px}
+button:disabled{opacity:.4}
+.tray{display:flex;gap:8px;align-items:center}
+.piece{display:flex;flex-direction:column;align-items:center;gap:2px;border-color:var(--mustard);border-width:2px;padding:6px 12px;min-width:76px}
+.piece canvas{width:60px;height:16px}
+.piece .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.piece.placed{border-color:var(--line);background:transparent}
+.piece.placed .lbl::after{content:' · siirrä'}
+.piece.active{background:var(--mustard);border-color:var(--mustard);color:#fff}
+.keys{font-size:14px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+#board{display:block;border-radius:6px;box-shadow:0 0 0 1.5px rgba(44,58,65,.12)}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.card{pointer-events:auto;background:var(--paper);border-radius:16px;padding:22px 26px;box-shadow:0 10px 40px rgba(44,58,65,.18);
+  display:flex;flex-direction:column;gap:14px;align-items:flex-start;max-width:min(440px,90%)}
+.card h2{margin:0;font-size:26px;font-weight:500;text-wrap:balance}
+.card p{margin:0;color:var(--mute);font-size:16px;line-height:1.45}
+.card .row{display:flex;gap:10px;flex-wrap:wrap}
+.primary{background:var(--fjord);border-color:var(--fjord);color:#fff}
+.toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:8px 16px;border-radius:999px;font-size:15px;pointer-events:none;white-space:nowrap}
+.levels{display:grid;grid-template-columns:repeat(4,64px);gap:8px}
+.levels button{height:56px;font-size:18px;font-variant-numeric:tabular-nums}
+.card h3{margin:4px 0 0;font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.ownlist{display:flex;flex-wrap:wrap;gap:8px;max-width:100%}
+.ownlist button{font-size:15px}
+.btnlink{font-family:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;font-size:16px;padding:10px 14px;text-decoration:none}
+.levels button.done{border-color:var(--fjord);color:var(--fjord)}
+.controls{display:flex;justify-content:space-between;align-items:stretch;gap:12px;padding-bottom:env(safe-area-inset-bottom,0px)}
+.pad{display:flex;gap:12px}
+.ctl{width:min(110px,22vw);height:min(84px,13vh);min-height:52px;border-radius:18px;font-size:28px;background:var(--paper);display:flex;align-items:center;justify-content:center}
+.ctl.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.ctl.jump{width:min(200px,34vw);font-size:18px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.placebar{display:flex;gap:10px;align-items:center;flex:1;justify-content:center;flex-wrap:wrap}
+.placebar .msg{font-size:16px;color:var(--mute)}
+@media (max-height:520px){ .lvl .hint{display:none} .app{gap:6px;padding-block:6px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+
+<div class="app" id="app">
+  <header>
+    <div class="lvl"><span class="num" id="lnum">Kenttä 1 / 5</span><h1 id="lname"></h1><span class="hint" id="lhint"></span></div>
+    <div class="tools">
+      <span class="keys" id="keys"></span>
+      <div class="tray" id="tray"></div>
+      <button id="restartBtn" aria-label="Yritä uudelleen">↻</button>
+      <button id="fsBtn" aria-label="Koko näyttö">⛶</button>
+      <button id="menuBtn">Kentät</button>
+    </div>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="board"></canvas>
+    <div class="overlay" id="overlay" hidden></div>
+    <div class="toast" id="toast" hidden></div>
+  </div>
+  <div class="controls" id="controls">
+    <div class="pad" id="movePad">
+      <button class="ctl" id="bL" aria-label="Vasemmalle">◀</button>
+      <button class="ctl" id="bR" aria-label="Oikealle">▶</button>
+    </div>
+    <div class="placebar" id="placeBar" hidden>
+      <span class="msg" id="placeMsg">Vedä pala paikalleen</span>
+      <button id="removeBtn" hidden>Poista</button>
+      <button id="cancelBtn">Peru</button>
+      <button id="placeBtn" class="primary">Aseta</button>
+    </div>
+    <button class="ctl jump" id="bJ">Hyppy</button>
+  </div>
+</div>
+
+<script src="js/engine.js"></script>
+<script src="js/levels.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const board=$('board'), ctx=board.getContext('2d');
+const C={}; const cs=getComputedStyle(document.documentElement);
+['paper','ink','oak','sand','fjord','lingon','mustard','mute','line','birch'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());
+const NAME={1:'Lattia',3:'Sulava',4:'Hihna',5:'Hihna'};
+// Manic Miner -henkiset kenttäpaletit: jokaisella luolalla oma lattia-, seinä- ja hihnaväri
+const PALS=[
+  {bg:'#F4F1EA',floor:'#C8463B',wall:'#3E6E8E',belt:'#2F8F5B',key:['#D9A12A','#2F8F5B','#3E6E8E','#C8463B']},
+  {bg:'#EEF2F5',floor:'#2F5FA8',wall:'#D9893A',belt:'#C8463B',key:['#D9A12A','#C8463B','#2F8F5B','#7D4BA0']},
+  {bg:'#F0F3EC',floor:'#2F8F5B',wall:'#8A5AA8',belt:'#D2563B',key:['#D9A12A','#2F5FA8','#C8463B','#8A5AA8']},
+  {bg:'#F4EFF6',floor:'#7D4BA0',wall:'#3C9A8E',belt:'#D2563B',key:['#D9A12A','#3C9A8E','#2F5FA8','#C8463B']},
+  {bg:'#EDF4F3',floor:'#1F8A8A',wall:'#C8463B',belt:'#2F5FA8',key:['#D9A12A','#C8463B','#7D4BA0','#2F8F5B']},
+  {bg:'#F6F1E6',floor:'#B07A1F',wall:'#2F5FA8',belt:'#2F8F5B',key:['#C8463B','#2F5FA8','#2F8F5B','#7D4BA0']},
+  {bg:'#F6EEF2',floor:'#B83C78',wall:'#2F8F5B',belt:'#2F5FA8',key:['#D9A12A','#2F8F5B','#2F5FA8','#1F8A8A']},
+];
+const GUARDC=['#C8463B','#2F5FA8','#7D4BA0','#2F8F5B','#D9893A'];
+let pal=PALS[0];
+function tint(hex,a){ const n=parseInt(hex.slice(1),16), r=n>>16, g=n>>8&255, b=n&255, m=v=>Math.round(v+(255-v)*a);
+  return '#'+((1<<24)|(m(r)<<16)|(m(g)<<8)|m(b)).toString(16).slice(1); }
+const CAUSE={fall:'Putosit liian korkealta',spike:'Piikit!',pit:'Putosit kuiluun',guard:'Vartija sai kiinni'};
+const TICK=50;
+const BELT_VIS=0.6;      // hihnan nuolten näkyvä nopeus, ruutua sekunnissa
+const UNLOCK_ALL=true;   // testivaihe: kaikki kentät valittavissa
+
+// kenttälista: valmiit + editorissa tallennetut, tai editorin testikenttä (#testi)
+const TEST = location.hash==='#testi';
+let CUSTOM=[]; try{ CUSTOM=JSON.parse(localStorage.getItem('pp-custom-levels')||'[]')||[]; }catch(e){}
+let GL;
+if(TEST){ let tl=null; try{ tl=JSON.parse(localStorage.getItem('pp-editor-test')||'null'); }catch(e){} GL=[tl||LEVELS[0]]; }
+else GL = LEVELS.concat(CUSTOM.map(c=>Object.assign({},c,{custom:true})));
+const NBUILT = TEST? 0 : LEVELS.length;
+const levelKey = d => (TEST?'testi:':d.custom?'oma:':'')+d.name;
+let progress=0, saved={};
+try{ progress=+localStorage.getItem('pp3-progress')||0; saved=JSON.parse(localStorage.getItem('pp3-pieces')||'{}')||{}; }catch(e){}
+function persist(){ try{ if(!TEST) localStorage.setItem('pp3-progress',String(progress)); saved[levelKey(def)]=placed; localStorage.setItem('pp3-pieces',JSON.stringify(saved)); }catch(e){} }
+
+let li=0, def, world, st, prev, placed=[], mode='play', edit=null, deadT=0, frame=0;
+const held={L:false,R:false,J:false}; let jumpLatch=false;
+
+function loadLevel(i){
+  li=i; def=GL[i]; pal=PALS[i%PALS.length]; document.body.style.background=pal.bg;
+  const sv=saved[levelKey(def)];
+  placed = (sv && sv.length===def.pieces.length) ? sv.map(p=>p&&{...p}) : def.pieces.map(()=>null);
+  // hylkää tallennetut palat, jotka eivät enää mahdu päivitettyyn kenttään
+  placed = placed.map(p=>p).map((p,k)=> p && (p.type=def.pieces[k].type, true) && p.len===def.pieces[k].len && freeFor(def,p,placed.filter((q,j)=>j!==k)) ? p : null);
+  edit=null; buildTray(); restart();
+  $('lnum').textContent = TEST? 'Editorin testi' : def.custom? 'Oma kenttä' : `Kenttä ${i+1} / ${NBUILT}`;
+  $('lname').textContent=def.name; $('lhint').textContent=def.hint;
+}
+function restart(){
+  landAt=jumpAt=-1e9;
+  world=makeWorld(def,placed); st=newState(world); prev={x:st.x,y:st.y};
+  mode='play'; deadT=0; edit=null; hideOverlay(); setPlaceUI(false); updateTray(); updateKeys();
+}
+function rebuildWorld(){
+  const old=world, oldHp=st.hp;
+  world=makeWorld(def,placed);
+  st.hp=world.cl.map(i=>{ const k=old.hpIdx[i]; return k>=0? oldHp[k] : CRUMBLE_HP; });
+}
+function updateKeys(){ const n=world.keys.length, got=world.keys.filter((_,i)=>st.keys>>i&1).length; $('keys').textContent = n? `Avaimet ${got}/${n}` : ''; }
+
+// ---------- tray ----------
+function buildTray(){
+  const tr=$('tray'); tr.innerHTML='';
+  def.pieces.forEach((p,k)=>{
+    const b=document.createElement('button'); b.className='piece'; b.dataset.k=k;
+    b.innerHTML='<canvas width="120" height="32"></canvas><span class="lbl"></span>';
+    b.addEventListener('click',()=>{ if(edit&&edit.k===k) cancelPlace(); else startPlace(k); });
+    tr.appendChild(b);
+  });
+  updateTray();
+}
+function pieceType(k){ return (edit&&edit.k===k)? edit.g.type : (placed[k]? placed[k].type : def.pieces[k].type); }
+function updateTray(){
+  [...$('tray').children].forEach((b,k)=>{
+    b.classList.toggle('placed',!!placed[k]); b.classList.toggle('active',!!edit&&edit.k===k);
+    b.disabled = mode==='won'||mode==='menu';
+    b.querySelector('.lbl').textContent=NAME[pieceType(k)];
+    b.setAttribute('aria-label',(placed[k]?'Siirrä pala: ':'Lisää pala: ')+NAME[pieceType(k)]);
+    drawIcon(b.querySelector('canvas'),pieceType(k),def.pieces[k].len);
+  });
+}
+
+// ---------- placement ----------
+function setPlaceUI(on){
+  $('placeBar').hidden=!on; $('movePad').style.visibility=on?'hidden':''; $('bJ').style.visibility=on?'hidden':'';
+  
+  $('removeBtn').hidden=!(on && edit && placed[edit.k]);
+}
+function startPlace(k){
+  if(mode!=='play' && mode!=='place') return;
+  const p=def.pieces[k];
+  const g = placed[k]? {...placed[k]} : {type:p.type,len:p.len,r:Math.max(2,Math.min(ROWS-2,(st.y>>2)-1)),c:Math.floor((COLS-p.len)/2)};
+  edit={k,g}; mode='place'; setPlaceUI(true); updateTray(); validate();
+}
+function ghostValid(){
+  if(!edit) return false; const g=edit.g;
+  if(!freeFor(def,g,placed.filter((_,j)=>j!==edit.k))) return false;
+  const moving=!!placed[edit.k], px=moving? world.start.x : st.x, py=moving? world.start.y : st.y;
+  const bx0=px>>2, bx1=(px+U-1)>>2, br0=Math.floor((py-8)/U), br1=Math.floor((py-1)/U);
+  for(let k=0;k<g.len;k++){ const c=g.c+k; if(c>=bx0&&c<=bx1&&g.r>=br0&&g.r<=br1) return false; }
+  return true;
+}
+function validate(){ const ok=ghostValid(); $('placeBtn').disabled=!ok; $('placeMsg').textContent= !ok? 'Ei mahdu tähän' : placed[edit.k]? 'Siirto aloittaa kentän alusta' : 'Vedä pala paikalleen'; }
+function commitPlace(){ if(!ghostValid()) return; const moved=!!placed[edit.k]; placed[edit.k]={...edit.g}; persist();
+  if(moved){ restart(); toast('Pala siirretty, aloitetaan alusta'); } else { rebuildWorld(); endPlace(); } }
+function removePiece(){ placed[edit.k]=null; persist(); restart(); toast('Pala poistettu, aloitetaan alusta'); }
+function cancelPlace(){ endPlace(); }
+function endPlace(){ edit=null; mode='play'; setPlaceUI(false); updateTray(); }
+
+
+let dragging=false;
+board.addEventListener('pointerdown',e=>{ if(mode!=='place') return; dragging=true; board.setPointerCapture(e.pointerId); moveGhost(e); e.preventDefault(); });
+board.addEventListener('pointermove',e=>{ if(mode==='place'&&dragging) moveGhost(e); });
+board.addEventListener('pointerup',()=>{ dragging=false; });
+board.addEventListener('pointercancel',()=>{ dragging=false; });
+function moveGhost(e){
+  const r=board.getBoundingClientRect(), fx=(e.clientX-r.left)/r.width*COLS, fy=(e.clientY-r.top)/r.height*ROWS;
+  const g=edit.g; g.c=Math.max(0,Math.min(COLS-g.len,Math.round(fx-g.len/2))); g.r=Math.max(1,Math.min(ROWS-1,Math.floor(fy)));
+  validate();
+}
+
+// ---------- controls ----------
+function bindHold(id,key){
+  const el=$(id);
+  const down=e=>{ e.preventDefault(); el.setPointerCapture?.(e.pointerId); held[key]=true; if(key==='J') jumpLatch=true; el.classList.add('on'); };
+  const up=()=>{ held[key]=false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown',down); el.addEventListener('pointerup',up);
+  el.addEventListener('pointercancel',up); el.addEventListener('lostpointercapture',up);
+}
+bindHold('bL','L'); bindHold('bR','R'); bindHold('bJ','J');
+const tap=(id,fn)=>$(id).addEventListener('click',fn);
+if(navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) $('fsBtn').hidden=true;
+tap('fsBtn',()=>{
+  const el=document.documentElement, d=document;
+  const on = d.fullscreenElement || d.webkitFullscreenElement;
+  try{
+    if(on){ (d.exitFullscreen||d.webkitExitFullscreen).call(d); return; }
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if(!req) throw 0;
+    const p = req.call(el); if(p && p.catch) p.catch(()=>toast('Koko näyttö ei ole sallittu tässä näkymässä'));
+  }catch(e){ toast('Koko näyttö ei ole sallittu tässä näkymässä'); }
+});
+tap('restartBtn',restart); tap('menuBtn',showMenu);
+tap('placeBtn',commitPlace); tap('cancelBtn',cancelPlace); tap('removeBtn',removePiece);
+document.addEventListener('gesturestart',e=>e.preventDefault());
+document.addEventListener('dblclick',e=>e.preventDefault());
+const KEYS={ArrowLeft:'L',KeyA:'L',ArrowRight:'R',KeyD:'R',ArrowUp:'J',KeyW:'J',Space:'J'};
+addEventListener('keydown',e=>{
+  if(KEYS[e.code]){ e.preventDefault(); if(mode==='place') return; held[KEYS[e.code]]=true; if(KEYS[e.code]==='J') jumpLatch=true; }
+  else if(e.code==='KeyR') restart();
+  else if(e.code==='Enter' && mode==='place') commitPlace();
+  else if(e.code==='Escape' && mode==='place') cancelPlace();
+  else if(/^Digit[1-9]$/.test(e.code)){ const k=+e.code.slice(5)-1; if(k<def.pieces.length) startPlace(k); }
+});
+addEventListener('keyup',e=>{ if(KEYS[e.code]) held[KEYS[e.code]]=false; });
+
+// ---------- overlay ----------
+function hideOverlay(){ $('overlay').hidden=true; $('overlay').innerHTML=''; }
+function showCard(html){ const o=$('overlay'); o.innerHTML='<div class="card">'+html+'</div>'; o.hidden=false; return o; }
+function toast(t){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,1300); }
+function showWin(){
+  if(TEST){
+    const o=showCard(`<h2>${esc(def.name)} läpäisty</h2><p>Testikenttä on pelattavissa läpi.</p><div class="row"><button id="again">Uudelleen</button><button id="ed" class="primary">Takaisin editoriin</button></div>`);
+    o.querySelector('#again').onclick=restart; o.querySelector('#ed').onclick=()=>{ location.href='editor.html'; };
+    return;
+  }
+  const last=li===GL.length-1;
+  const o=showCard(last
+    ? `<h2>Kaikki kentät läpäisty</h2><p>Valmiit kentät on ratkaistu. Tee omia kenttäeditorissa.</p><div class="row"><button id="again">Pelaa uudelleen</button><button id="lv" class="primary">Kentät</button></div>`
+    : `<h2>${esc(def.name)} läpäisty</h2><p>Seuraavaksi: ${esc(GL[li+1].name)}</p><div class="row"><button id="again">Uudelleen</button><button id="next" class="primary">Seuraava kenttä</button></div>`);
+  o.querySelector('#again').onclick=restart;
+  if(last) o.querySelector('#lv').onclick=showMenu; else o.querySelector('#next').onclick=()=>loadLevel(li+1);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+function showMenu(){
+  if(TEST){ location.href='editor.html'; return; }
+  if(mode==='place') cancelPlace();
+  const prevMode=mode; mode='menu'; updateTray();
+  let b=''; for(let i=0;i<NBUILT;i++){ const L=GL[i]; b+=`<button data-i="${i}" ${(!UNLOCK_ALL&&i>progress)?'disabled':''} class="${i<progress?'done':''}" aria-label="${esc(L.name)}">${i+1}</button>`; }
+  let own=''; for(let i=NBUILT;i<GL.length;i++) own+=`<button data-i="${i}" class="own">${esc(GL[i].name)}</button>`;
+  const o=showCard(`<h2>Kentät</h2><p>${UNLOCK_ALL? 'Testivaihe: kaikki kentät ovat valittavissa. Läpäistyt on merkitty.' : 'Avoinna '+Math.min(progress+1,NBUILT)+' / '+NBUILT+'.'} Asettamasi palat säilyvät kentässä, kunnes siirrät tai poistat ne.</p><div class="levels">${b}</div>`+
+    (own? `<h3>Omat kentät</h3><div class="ownlist">${own}</div>` : '')+
+    `<div class="row"><button id="close">Sulje</button><a class="btnlink" href="editor.html">Kenttäeditori</a></div>`);
+  o.querySelectorAll('.levels button, .ownlist button').forEach(el=>el.onclick=()=>loadLevel(+el.dataset.i));
+  o.querySelector('#close').onclick=()=>{ hideOverlay(); mode = prevMode==='menu'?'play':prevMode; updateTray(); if(mode==='won') showWin(); };
+}
+
+// ---------- loop ----------
+let acc=0,last=performance.now();
+let landAt=-1e9, jumpAt=-1e9, landHard=0;
+function tick(){
+  prev={x:st.x,y:st.y}; const k0=st.keys, m0=st.m, pk=st.peak;
+  const dir=(held.R?1:0)-(held.L?1:0);
+  step(world,st,{dir,jump:held.J||jumpLatch}); jumpLatch=false;
+  if(m0!==0 && st.m===0){ landAt=frame; landHard=Math.min(1,(st.y-pk)/MAXFALL); }
+  if(m0===0 && st.m===1){ jumpAt=frame; }
+  if(st.keys!==k0) updateKeys();
+  if(st.dead){ mode='dead'; deadT=0; toast(CAUSE[st.cause]||'Hups'); }
+  else if(st.won){ mode='won'; if(!TEST && !def.custom && li+1>progress) progress=li+1; persist(); updateTray(); showWin(); }
+}
+function loop(now){
+  const dt=Math.min(200,now-last); last=now; frame+=dt;
+  if(mode==='play'){ acc+=dt; while(acc>=TICK && mode==='play'){ acc-=TICK; tick(); } } else acc=0;
+  if(mode==='dead'){ deadT+=dt; if(deadT>900) restart(); }
+  draw(mode==='play'? acc/TICK : 1);
+  requestAnimationFrame(loop);
+}
+
+// ---------- sizing ----------
+let ts=32, dpr=1;
+function resize(){
+  const s=$('stage').getBoundingClientRect();
+  ts=Math.max(8,Math.floor(Math.min(s.width/COLS, s.height/ROWS)));
+  dpr=window.devicePixelRatio||1;
+  board.style.width=ts*COLS+'px'; board.style.height=ts*ROWS+'px';
+  board.width=Math.round(ts*COLS*dpr); board.height=Math.round(ts*ROWS*dpr);
+}
+addEventListener('resize',resize); new ResizeObserver(resize).observe($('stage'));
+
+// ---------- drawing ----------
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect? ctx.roundRect(x,y,w,h,r) : ctx.rect(x,y,w,h); }
+function drawTile(t,r,c,hp,alpha,isMine,run){
+  const x=c*ts, y=r*ts, s=ts;
+  ctx.globalAlpha=alpha;
+  const fl = isMine? tint(pal.floor,.45) : pal.floor;
+  if(t===FLOOR){ ctx.fillStyle=fl; rr(x+.5,y,s-1,s*.32,s*.08); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.28)'; ctx.fillRect(x+s*.12,y+s*.06,s*.76,s*.05);
+    if(isMine){ ctx.strokeStyle=pal.floor; ctx.lineWidth=1.5; rr(x+1.25,y+.75,s-2.5,s*.32-1.5,s*.07); ctx.stroke(); } }
+  else if(t===WALL){ ctx.fillStyle=pal.wall; ctx.fillRect(x,y,s+.5,s+.5);
+    ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=Math.max(1,s*.04);
+    ctx.beginPath(); ctx.moveTo(x,y+s*.5); ctx.lineTo(x+s,y+s*.5); ctx.moveTo(x+s*(r%2?.3:.7),y); ctx.lineTo(x+s*(r%2?.3:.7),y+s*.5);
+    ctx.moveTo(x+s*(r%2?.7:.3),y+s*.5); ctx.lineTo(x+s*(r%2?.7:.3),y+s); ctx.stroke(); }
+  else if(t===CRUMB){ const f=Math.max(0,hp)/CRUMBLE_HP; if(f>0){
+      const base = isMine? tint(pal.floor,.62) : tint(pal.floor,.35);
+      ctx.fillStyle=base; const h=s*.32; rr(x+1,y+h*(1-f),s-2,h*f+s*.04,s*.06); ctx.fill();
+      ctx.fillStyle=pal.bg; for(let k=0;k<3;k++){ ctx.beginPath(); ctx.arc(x+s*(.2+.3*k),y+h*.55,s*.055,0,7); ctx.fill(); }
+      if(isMine){ ctx.strokeStyle=pal.floor; ctx.lineWidth=1.5; rr(x+1.75,y+h*(1-f)+.75,s-3.5,h*f+s*.04-1.5,s*.05); ctx.stroke(); } } }
+  else if(t===CONVL||t===CONVR){
+    const d=t===CONVR?1:-1, bc = isMine? tint(pal.belt,.4) : pal.belt, h=s*.44;
+    const left = run? run[0] : world.g[r*COLS+c-1]!==t, right = run? run[1] : world.g[r*COLS+c+1]!==t;
+    ctx.fillStyle=bc; rr(x+(left?1:0),y,s-(left?1:0)-(right?1:0),h,left||right? h/2 : 0); ctx.fill();
+    if(isMine){ ctx.strokeStyle=pal.belt; ctx.lineWidth=1.5; rr(x+(left?1.75:.75),y+.75,s-(left?2.5:1.5)-(right?1:0),h-1.5,left||right? h/2 : 0); ctx.stroke(); }
+    // animaatio hidastettu: kolmasosa todellisesta nopeudesta, jotta suunta erottuu
+    const vis = BELT_VIS/1000;                           // ruutua / ms
+    const off = (((frame*vis)%1)+1)%1 * s * d;
+    const ang = frame*vis*2*Math.PI*d;
+    for(const [on,cx] of [[left,x+h/2+1],[right,x+s-h/2-1]]) if(on){
+      ctx.fillStyle=pal.bg; ctx.beginPath(); ctx.arc(cx,y+h/2,h*.3,0,7); ctx.fill();
+      ctx.strokeStyle=bc; ctx.lineWidth=Math.max(1.5,s*.05); ctx.beginPath();
+      ctx.moveTo(cx-Math.cos(ang)*h*.3,y+h/2-Math.sin(ang)*h*.3); ctx.lineTo(cx+Math.cos(ang)*h*.3,y+h/2+Math.sin(ang)*h*.3); ctx.stroke(); }
+    // yksi iso nuoli ruutua kohden, kärki menosuuntaan
+    ctx.save(); ctx.beginPath(); ctx.rect(x+(left?h:0),y,s-(left?h:0)-(right?h:0),h); ctx.clip();
+    ctx.fillStyle= isMine? pal.belt : '#fff';
+    for(let k=-1;k<=1;k++){ const cx=x+k*s+off+s/2, aw=s*.3;
+      ctx.beginPath(); ctx.moveTo(cx-d*aw,y+h*.08); ctx.lineTo(cx+d*aw,y+h*.5); ctx.lineTo(cx-d*aw,y+h*.92); ctx.lineTo(cx-d*aw*.3,y+h*.5); ctx.closePath(); ctx.fill(); }
+    ctx.restore(); }
+  else if(t===SPIKE){ const n=3, w=s/n;
+    for(let k=0;k<n;k++){ ctx.fillStyle=C.ink; ctx.beginPath(); ctx.moveTo(x+k*w,y+s); ctx.lineTo(x+k*w+w/2,y+s*.48); ctx.lineTo(x+(k+1)*w,y+s); ctx.fill();
+      ctx.fillStyle=C.lingon; ctx.beginPath(); ctx.moveTo(x+k*w+w*.32,y+s*.66); ctx.lineTo(x+k*w+w/2,y+s*.48); ctx.lineTo(x+k*w+w*.68,y+s*.66); ctx.fill(); } }
+  else if(t===EXIT){ const open=st.keys===world.allKeys, dx=x+s*.1, dw=s*.8, dy=y-s*.85, dh=s*1.85;
+    ctx.fillStyle=open? C.fjord : C.line; ctx.beginPath(); ctx.moveTo(dx,dy+dh); ctx.lineTo(dx,dy+dw/2); ctx.arc(dx+dw/2,dy+dw/2,dw/2,Math.PI,0); ctx.lineTo(dx+dw,dy+dh); ctx.fill();
+    ctx.fillStyle= open? '#fff' : C.mute; ctx.beginPath(); ctx.arc(dx+dw/2,dy+dw*.6,dw*.18,0,7); ctx.fill();
+    if(open){ ctx.globalAlpha=alpha*(.3+.3*Math.sin(frame/200)); ctx.strokeStyle=pal.key[0]; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(dx+dw/2,dy+dw/2,dw/2+4,Math.PI,0); ctx.stroke(); } }
+  ctx.globalAlpha=1;
+}
+function drawKey(r,c,i){
+  const s=ts, x=c*s+s/2, y=r*s+s/2+Math.sin(frame/300+c)*s*.06;
+  ctx.strokeStyle=pal.key[(Math.floor(frame/180)+i)%pal.key.length]; ctx.lineWidth=Math.max(2,s*.1); ctx.lineCap='round';
+  ctx.beginPath(); ctx.arc(x-s*.12,y,s*.14,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+s*.02,y); ctx.lineTo(x+s*.3,y); ctx.moveTo(x+s*.22,y); ctx.lineTo(x+s*.22,y+s*.12); ctx.stroke();
+}
+function drawGuard(G,gi){
+  const p=guardPos(G,st.t), s=ts/U, x=p.x*s, y=p.y*s, w=ts, bob=Math.abs(Math.sin(st.t*0.8))*w*.06;
+  const gc=GUARDC.filter(c=>c!==pal.floor&&c!==pal.wall); ctx.fillStyle=gc[(gi+li)%gc.length];
+  rr(x+w*.08,y-w*1.5-bob,w*.84,w*1.5,w*.42); ctx.fill();
+  ctx.fillRect(x+w*.2,y-w*.2,w*.18,w*.2); ctx.fillRect(x+w*.62,y-w*.2,w*.18,w*.2);
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x+w*.5+p.d*w*.14,y-w*1.05-bob,w*.14,0,7); ctx.fill();
+  ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(x+w*.5+p.d*w*.19,y-w*1.05-bob,w*.065,0,7); ctx.fill();
+}
+function drawPlayer(px,py){
+  const s=ts/U, x=px*s, y=py*s, w=ts, h=ts*2;
+  const moving = mode==='play' && (held.L||held.R) && st.m===0;
+  const face = st.face||1, stp = moving? Math.floor(frame/120)%2 : 0;
+  // jousto: alastulossa litistyy, ponnistuksessa venyy
+  let sx=1, sy=1;
+  const lt=(frame-landAt)/220; if(lt>=0&&lt<1){ const e=Math.sin(lt*Math.PI)*(1-lt*.4), k=.12+.16*landHard; sy-=k*e; sx+=k*.8*e; }
+  const jt=(frame-jumpAt)/200; if(jt>=0&&jt<1){ const e=Math.sin(jt*Math.PI); sy+=.14*e; sx-=.1*e; }
+  ctx.save(); ctx.translate(x+w/2,y); ctx.scale(sx,sy); ctx.translate(-(x+w/2),-y);
+  // jalat koukistuvat alastulossa
+  const bend = (lt>=0&&lt<1)? Math.sin(lt*Math.PI)*w*.07 : 0;
+  ctx.fillStyle=C.ink; const lw=w*.16, lh=h*.18;
+  ctx.fillRect(x+w*.28-(stp?w*.06:0)-bend, y-lh, lw, lh); ctx.fillRect(x+w*.56+(stp?w*.06:0)+bend, y-lh, lw, lh);
+  ctx.fillStyle=pal.floor; rr(x+w*.18,y-h*.62,w*.64,h*.47,w*.18); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(x+w*.3,y-h*.5,w*.4,h*.05);
+  ctx.fillStyle='#fff'; ctx.strokeStyle=C.ink; ctx.lineWidth=Math.max(1.5,w*.07);
+  ctx.beginPath(); ctx.arc(x+w*.5,y-h*.76,w*.25,0,7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=C.mustard; ctx.beginPath(); ctx.arc(x+w*.5,y-h*.79,w*.27,Math.PI,0); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+w*.5,y-h*.93,w*.09,0,7); ctx.fill();
+  ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(x+w*.5+face*w*.11,y-h*.73,w*.045,0,7); ctx.fill();
+  ctx.restore();
+}
+function draw(alpha){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=pal.bg; ctx.fillRect(0,0,ts*COLS,ts*ROWS);
+  ctx.fillStyle = mode==='place'? 'rgba(61,111,121,.35)' : 'rgba(44,58,65,.07)';
+  for(let r=1;r<ROWS;r++) for(let c=1;c<COLS;c++){ ctx.beginPath(); ctx.arc(c*ts,r*ts,mode==='place'?1.8:1.1,0,7); ctx.fill(); }
+  const mine=new Set(); placed.forEach((p,k)=>{ if(p && !(edit&&edit.k===k)) for(let j=0;j<p.len;j++) mine.add(p.r*COLS+p.c+j); });
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const i=r*COLS+c; let t=world.g[i]; if(!t) continue;
+    if(edit && placed[edit.k] && placed[edit.k].r===r && c>=placed[edit.k].c && c<placed[edit.k].c+placed[edit.k].len) continue;
+    const k=world.hpIdx[i]; drawTile(t,r,c,k>=0?st.hp[k]:0,1,mine.has(i));
+  }
+  world.keys.forEach((K,i)=>{ if(!(st.keys>>i&1)) drawKey(K.r,K.c,i); });
+  world.guards.forEach((G,gi)=>drawGuard(G,gi));
+  if(edit){
+    const g=edit.g, ok=ghostValid();
+    for(let k=0;k<g.len;k++) drawTile(g.type,g.r,g.c+k,CRUMBLE_HP,.75,true,[k===0,k===g.len-1]);
+    ctx.strokeStyle= ok? C.ink : C.lingon; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    rr(g.c*ts+1,g.r*ts+1,g.len*ts-2,ts-2,6); ctx.stroke(); ctx.setLineDash([]);
+  }
+  const ix=prev.x+(st.x-prev.x)*alpha, iy=prev.y+(st.y-prev.y)*alpha;
+  if(mode==='dead') ctx.globalAlpha=(Math.floor(deadT/100)%2)? .25 : 1;
+  drawPlayer(ix,iy); ctx.globalAlpha=1;
+}
+function drawIcon(c,type,n){
+  const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
+  const s=Math.min(30,110/n), x0=(c.width-n*s)/2, y0=10, h=s*.34;
+  const col = type===CRUMB? tint(pal.floor,.62) : type>=4? tint(pal.belt,.4) : tint(pal.floor,.45);
+  const edge = type>=4? pal.belt : pal.floor;
+  for(let k=0;k<n;k++){ const x=x0+k*s;
+    g.fillStyle=col; g.fillRect(x+1,y0,s-2,h); g.strokeStyle=edge; g.lineWidth=1.5; g.strokeRect(x+1.75,y0+.75,s-3.5,h-1.5);
+    if(type>=4){ g.fillStyle=pal.belt; const d=type===5?1:-1, cx=x+s/2; g.beginPath(); g.moveTo(cx-d*3,y0+2); g.lineTo(cx+d*3,y0+h/2); g.lineTo(cx-d*3,y0+h-2); g.closePath(); g.fill(); }
+    if(type===CRUMB){ g.fillStyle=pal.bg; g.beginPath(); g.arc(x+s/2,y0+h/2,2,0,7); g.fill(); }
+  }
+}
+
+function start(data){
+  resize();
+  if(TEST){ $('menuBtn').textContent='Editoriin'; }
+  loadLevel(TEST? 0 : Math.min(data && data.level!=null ? data.level : progress, NBUILT-1));
+  requestAnimationFrame(t=>{ last=t; loop(t); });
+}
+window.claude?.hot?.snapshot?.(()=>({level:li}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
