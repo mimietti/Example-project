@@ -346,8 +346,8 @@ const LEVELS = [
 },
 {
   "name": "Timing is key",
-  "hint": "",
-  "pieces": [{"type": 1, "len": 2}],
+  "hint": "Possible to solve without using the floor piece.",
+  "pieces": [{"type": 3, "len": 1}],
   "sol": [null],
   "guards": [{"r": 6, "c0": 9, "c1": 14, "dir": 1}, {"r": 6, "c0": 19, "c1": 26, "dir": -1}],
   "map": [
