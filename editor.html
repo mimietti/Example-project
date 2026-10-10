@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<title>Kenttäeditori · Puuttuva pala</title>
+<title>Level editor · Puuttuva pala</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap">
 <style>
 /* Layout: työkalut vasemmalla, ruudukko keskellä, palat/vartijat/tarkistus oikealla. Kapealla näytöllä pinoutuu. */
@@ -36,6 +36,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 button{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
 button.primary{background:var(--fjord);border-color:var(--fjord);color:#fff}
 button:disabled{opacity:.45}
+.flag{padding:7px 9px;line-height:0}
+.flag svg{display:block;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
 .tools{display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding-right:2px}
 .tool{display:flex;align-items:center;gap:8px;padding:6px 10px;min-width:118px;text-align:left}
 .tool canvas{width:28px;height:28px;flex:none}
@@ -81,18 +83,19 @@ textarea{width:100%;min-height:260px;font:12px/1.35 ui-monospace,Menlo,monospace
 <body>
 <div class="app">
   <header>
-    <a class="back" href="index.html">← Peli</a>
-    <input id="name" aria-label="Kentän nimi" placeholder="Kentän nimi" maxlength="40">
-    <input id="hint" aria-label="Vihje" placeholder="Vihje pelaajalle" maxlength="140">
-    <button id="newBtn">Uusi</button>
-    <button id="openBtn">Avaa</button>
-    <button id="saveBtn">Tallenna</button>
-    <button id="textBtn">Teksti</button>
-    <button id="checkBtn">Tarkista</button>
-    <button id="testBtn" class="primary">Testaa</button>
+    <a class="back" href="index.html" data-i18n="ed.back">← Game</a>
+    <input id="name" data-i18n-aria="ed.name" data-i18n-ph="ed.name" maxlength="40">
+    <input id="hint" data-i18n-aria="ed.hint" data-i18n-ph="ed.hint" maxlength="140">
+    <button id="newBtn" data-i18n="ed.new"></button>
+    <button id="openBtn" data-i18n="ed.open"></button>
+    <button id="saveBtn" data-i18n="ed.save"></button>
+    <button id="textBtn" data-i18n="ed.text"></button>
+    <button id="checkBtn" data-i18n="ed.check"></button>
+    <button id="testBtn" class="primary" data-i18n="ed.test"></button>
+    <button id="langBtn" class="flag"></button>
   </header>
 
-  <nav class="tools" id="tools" aria-label="Työkalut"></nav>
+  <nav class="tools" id="tools" data-i18n-aria="ed.tools"></nav>
 
   <div class="stage" id="stage">
     <canvas id="grid"></canvas>
@@ -101,26 +104,27 @@ textarea{width:100%;min-height:260px;font:12px/1.35 ui-monospace,Menlo,monospace
 
   <aside class="side">
     <section class="panel">
-      <h2>Pelaajan palat</h2>
+      <h2 data-i18n="ed.pieces"></h2>
       <div id="pieces"></div>
-      <button id="addPiece">+ Lisää pala</button>
-      <p class="small">Paina palan Ratkaisu-nappia ja napauta ruudukosta kohta, johon pala kuuluu. Tarkistus käyttää tätä sijoitusta.</p>
+      <button id="addPiece" data-i18n="ed.addPiece"></button>
+      <p class="small" data-i18n="ed.piecesHelp"></p>
     </section>
     <section class="panel">
-      <h2>Vartijat</h2>
+      <h2 data-i18n="ed.guards"></h2>
       <div id="guards"></div>
-      <p class="small">Valitse Vartija-työkalu ja vedä ruudukossa vaakasuoraan rivillä, jolla vartija kävelee (lattian yläpuolella). Vetosuunta on liikkeen alkusuunta.</p>
+      <p class="small" data-i18n="ed.guardsHelp"></p>
     </section>
     <section class="panel">
-      <h2>Tarkistus</h2>
-      <label class="small"><input type="checkbox" id="altChk"> Laske kaikki toimivat sijoitukset (vain yhden palan kentät, hidas)</label>
-      <div class="results" id="results"><p class="small">Ei vielä tarkistettu.</p></div>
+      <h2 data-i18n="ed.checkTitle"></h2>
+      <label class="small"><input type="checkbox" id="altChk"> <span data-i18n="ed.alt"></span></label>
+      <div class="results" id="results"></div>
     </section>
   </aside>
 </div>
 <div class="overlay" id="overlay" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="js/i18n.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/levels.js"></script>
 <script>
@@ -129,29 +133,16 @@ const {COLS,ROWS,freeFor}=PPEngine;
 const $=id=>document.getElementById(id);
 const C={floor:'#C8463B',wall:'#3E6E8E',belt:'#2F8F5B',bg:'#F4F1EA',ink:'#2C3A41',key:'#D9A12A',lingon:'#BE4A3F',fjord:'#3D6F79',mustard:'#D8A73A',line:'rgba(44,58,65,.10)'};
 const PCOL=['#D8A73A','#3D6F79','#8A5AA8','#2F8F5B'];
-const TYPE_NAME={1:'Lattia',3:'Sulava',4:'Hihna ←',5:'Hihna →'};
+const TYPE_NAME=t=>T({1:'tool.=',3:'tool.~',4:'tool.<',5:'tool.>'}[t]);
 
-const TOOLS=[
-  {id:'.', label:'Pyyhi'},
-  {id:'=', label:'Lattia'},
-  {id:'#', label:'Seinä'},
-  {id:'~', label:'Sulava'},
-  {id:'<', label:'Hihna ←'},
-  {id:'>', label:'Hihna →'},
-  {id:'^', label:'Piikki'},
-  {sep:true},
-  {id:'k', label:'Avain'},
-  {id:'P', label:'Aloitus'},
-  {id:'E', label:'Ovi'},
-  {id:'G', label:'Vartija'},
-];
+const TOOLS=[{id:'.'},{id:'='},{id:'#'},{id:'~'},{id:'<'},{id:'>'},{id:'^'},{sep:true},{id:'k'},{id:'P'},{id:'E'},{id:'G'}];
 
 // ---------- tila ----------
 let L, tool='=', solK=-1, dirty=false;
 function blank(){
   const map=[]; for(let r=0;r<ROWS;r++){ let s=''; for(let c=0;c<COLS;c++) s += (r===0||r===ROWS-1||c===0||c===COLS-1)? '#' : '.'; map.push(s); }
   map[ROWS-2]= '#' + '='.repeat(COLS-2) + '#';
-  return {name:'Uusi kenttä',hint:'',pieces:[{type:1,len:2}],sol:[null],guards:[],map:setCh(setCh(map,ROWS-3,2,'P'),ROWS-3,COLS-3,'E')};
+  return {name:T('ed.newLevel'),hint:'',pieces:[{type:1,len:2}],sol:[null],guards:[],map:setCh(setCh(map,ROWS-3,2,'P'),ROWS-3,COLS-3,'E')};
 }
 function setCh(map,r,c,ch){ const m=map.slice(); m[r]=m[r].slice(0,c)+ch+m[r].slice(c+1); return m; }
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -161,7 +152,7 @@ function normalize(o){
   x.sol=x.sol.map(s=>s? {r:s.r,c:s.c} : null); delete x.custom; return x;
 }
 function exportLevel(){
-  const o={name:L.name.trim()||'Nimetön',hint:L.hint.trim(),pieces:L.pieces.map(p=>({type:p.type,len:p.len})),
+  const o={name:L.name.trim()||T('ed.unnamed'),hint:L.hint.trim(),pieces:L.pieces.map(p=>({type:p.type,len:p.len})),
     sol:L.sol.map(s=>s?{r:s.r,c:s.c}:null),map:L.map.slice()};
   if(L.guards.length) o.guards=L.guards.map(g=>({r:g.r,c0:g.c0,c1:g.c1,dir:g.dir}));
   return o;
@@ -178,7 +169,7 @@ function buildTools(){
   TOOLS.forEach(t=>{
     if(t.sep){ const d=document.createElement('div'); d.className='sep'; el.appendChild(d); return; }
     const b=document.createElement('button'); b.className='tool'; b.dataset.t=t.id;
-    b.innerHTML='<canvas width="56" height="56"></canvas><span>'+t.label+'</span>';
+    b.innerHTML='<canvas width="56" height="56"></canvas><span data-i18n="tool.'+t.id+'">'+T('tool.'+t.id)+'</span>';
     b.onclick=()=>{ tool=t.id; solK=-1; updateTools(); renderPieces(); };
     el.appendChild(b);
     const g=b.querySelector('canvas').getContext('2d'); g.scale(2,2);
@@ -260,7 +251,7 @@ function cellAt(e){ const b=cv.getBoundingClientRect(); const c=Math.floor((e.cl
 function paint(p){
   if(!p) return;
   const edge = p.r===0||p.r===ROWS-1||p.c===0||p.c===COLS-1;
-  if(edge && 'PEkG'.includes(tool)){ toast('Reunaruutuihin voi piirtää vain laattoja'); return; }
+  if(edge && 'PEkG'.includes(tool)){ toast(T('ed.edgeOnly')); return; }
   const cur=L.map[p.r][p.c];
   if(tool==='P'||tool==='E'){ L.map=L.map.map(row=>row.split(tool).join('.')); }
   if(cur===tool) return;
@@ -275,7 +266,7 @@ cv.addEventListener('pointerdown',e=>{
   painting=true; paint(p);
 });
 cv.addEventListener('pointermove',e=>{
-  const p=cellAt(e); hover=p; $('coord').textContent=p? `rivi ${p.r}, sarake ${p.c}` : '';
+  const p=cellAt(e); hover=p; $('coord').textContent=p? T('ed.coord',{r:p.r,c:p.c}) : '';
   if(dragGuard && p){ dragGuard.c0=Math.min(dragGuard.start,p.c); dragGuard.c1=Math.max(dragGuard.start,p.c); dragGuard.dir = p.c<dragGuard.start? -1 : 1; }
   else if(painting && p && tool!=='P' && tool!=='E') paint(p);
   draw();
@@ -284,7 +275,7 @@ function endPtr(){
   painting=false;
   if(dragGuard){ const G=dragGuard; dragGuard=null;
     if(G.c1>G.c0){ L.guards.push({r:G.r,c0:G.c0,c1:G.c1,dir:G.dir}); renderGuards(); changed(); }
-    else { toast('Vedä vartijan reitti vähintään kahden ruudun matkalle'); draw(); } }
+    else { toast(T('ed.guardShort')); draw(); } }
 }
 cv.addEventListener('pointerup',endPtr); cv.addEventListener('pointercancel',endPtr);
 cv.addEventListener('pointerleave',()=>{ hover=null; $('coord').textContent=''; draw(); });
@@ -292,7 +283,7 @@ cv.addEventListener('pointerleave',()=>{ hover=null; $('coord').textContent=''; 
 function placeSol(p){
   const k=solK, P=L.pieces[k]; const c=Math.min(p.c, COLS-P.len);
   const others=L.sol.map((q,j)=>j!==k&&q?{type:L.pieces[j].type,len:L.pieces[j].len,r:q.r,c:q.c}:null).filter(Boolean);
-  if(!freeFor(exportLevel(),{type:P.type,len:P.len,r:p.r,c},others)){ toast('Pala ei mahdu tähän: ruudut eivät ole tyhjiä'); return; }
+  if(!freeFor(exportLevel(),{type:P.type,len:P.len,r:p.r,c},others)){ toast(T('ed.noFitSol')); return; }
   L.sol[k]={r:p.r,c}; solK=-1; updateTools(); renderPieces(); changed();
 }
 
@@ -302,14 +293,14 @@ function renderPieces(){
   L.pieces.forEach((p,k)=>{
     const d=document.createElement('div'); d.className='piece';
     d.innerHTML=`<span class="n" style="background:${PCOL[k%PCOL.length]}">${k+1}</span>
-      <select aria-label="Palan ${k+1} tyyppi">${[1,3,5,4].map(t=>`<option value="${t}" ${p.type===t?'selected':''}>${TYPE_NAME[t]}</option>`).join('')}</select>
-      <select aria-label="Palan ${k+1} pituus">${[1,2,3,4].map(n=>`<option value="${n}" ${p.len===n?'selected':''}>${n}</option>`).join('')}</select>
-      <button class="${solK===k?'on':''}" title="Aseta tarkoitettu paikka">${L.sol[k]?'Siirrä':'Ratkaisu'}</button>
-      <button title="Poista pala" aria-label="Poista pala ${k+1}">✕</button>`;
+      <select aria-label="${T('ed.type',{n:k+1})}">${[1,3,5,4].map(t=>`<option value="${t}" ${p.type===t?'selected':''}>${TYPE_NAME(t)}</option>`).join('')}</select>
+      <select aria-label="${T('ed.len',{n:k+1})}">${[1,2,3,4].map(n=>`<option value="${n}" ${p.len===n?'selected':''}>${n}</option>`).join('')}</select>
+      <button class="${solK===k?'on':''}" title="${T('ed.solTitle')}">${L.sol[k]?T('ed.solMove'):T('ed.solBtn')}</button>
+      <button title="${T('ed.delPiece',{n:k+1})}" aria-label="${T('ed.delPiece',{n:k+1})}">✕</button>`;
     const [sT,sN]=d.querySelectorAll('select'), [bS,bX]=d.querySelectorAll('button');
     sT.onchange=()=>{ p.type=+sT.value; changed(); };
     sN.onchange=()=>{ p.len=+sN.value; if(L.sol[k] && L.sol[k].c+p.len>COLS) L.sol[k]=null; changed(); renderPieces(); };
-    bS.onclick=()=>{ solK = solK===k? -1 : k; updateTools(); renderPieces(); if(solK>=0) toast(`Napauta kohtaa, johon pala ${k+1} kuuluu`); };
+    bS.onclick=()=>{ solK = solK===k? -1 : k; updateTools(); renderPieces(); if(solK>=0) toast(T('ed.tapSpot',{n:k+1})); };
     bX.onclick=()=>{ L.pieces.splice(k,1); L.sol.splice(k,1); solK=-1; renderPieces(); changed(); };
     el.appendChild(d);
   });
@@ -318,9 +309,9 @@ function renderPieces(){
 $('addPiece').onclick=()=>{ L.pieces.push({type:1,len:2}); L.sol.push(null); renderPieces(); changed(); };
 function renderGuards(){
   const el=$('guards'); el.innerHTML='';
-  if(!L.guards.length){ el.innerHTML='<p class="small">Ei vartijoita.</p>'; return; }
+  if(!L.guards.length){ el.innerHTML='<p class="small">'+T('ed.noGuards')+'</p>'; return; }
   L.guards.forEach((G,i)=>{ const d=document.createElement('div'); d.className='guard';
-    d.innerHTML=`<span>Rivi ${G.r}: sarakkeet ${G.c0}–${G.c1} ${G.dir>0?'→':'←'}</span><button aria-label="Poista vartija">Poista</button>`;
+    d.innerHTML=`<span>${T('ed.guardRow',{r:G.r,c0:G.c0,c1:G.c1,d:G.dir>0?'→':'←'})}</span><button>${T('ed.delGuard')}</button>`;
     d.querySelector('button').onclick=()=>{ L.guards.splice(i,1); renderGuards(); changed(); };
     el.appendChild(d); });
 }
@@ -336,85 +327,87 @@ $('hint').oninput=()=>{ L.hint=$('hint').value; store.set('pp-editor-draft',L); 
 
 function problems(){
   const m=L.map.join(''); const out=[];
-  if(!m.includes('P')) out.push('Kentästä puuttuu aloituspaikka.');
-  if(!m.includes('E')) out.push('Kentästä puuttuu ovi.');
+  if(!m.includes('P')) out.push(T('ed.p.noStart'));
+  if(!m.includes('E')) out.push(T('ed.p.noExit'));
   const at=ch=>{ for(let r=0;r<ROWS;r++){ const c=L.map[r].indexOf(ch); if(c>=0) return {r,c}; } return null; };
-  for(const [ch,nm] of [['P','Aloituspaikka'],['E','Ovi']]){ const q=at(ch);
-    if(q && (q.r===0||q.r===ROWS-1||q.c===0||q.c===COLS-1)) out.push(nm+' on reunaseinässä (rivi '+q.r+', sarake '+q.c+'). Siirrä se kentän sisälle.'); }
+  for(const [ch,nm] of [['P',T('ed.start')],['E',T('ed.door')]]){ const q=at(ch);
+    if(q && (q.r===0||q.r===ROWS-1||q.c===0||q.c===COLS-1)) out.push(T('ed.p.edge',{what:nm,r:q.r,c:q.c})); }
   return out;
 }
 
 $('newBtn').onclick=()=>{
-  const o=modal(`<h3>Uusi kenttä</h3><p class="small">Nykyinen luonnos korvataan. Tallennetut kentät säilyvät.</p><div class="rowb"><button id="mC">Peru</button><button id="mOk" class="primary">Aloita tyhjästä</button></div>`);
+  const o=modal(`<h3>${T('ed.newTitle')}</h3><p class="small">${T('ed.newText')}</p><div class="rowb"><button id="mC">${T('ed.cancel')}</button><button id="mOk" class="primary">${T('ed.blank')}</button></div>`);
   o.querySelector('#mC').onclick=closeModal; o.querySelector('#mOk').onclick=()=>{ load(blank()); closeModal(); };
 };
 $('openBtn').onclick=()=>{
   const own=store.get('pp-custom-levels',[]);
-  const o=modal(`<h3>Avaa kenttä</h3>
-    <h4>Omat kentät</h4><div class="list" id="ownL">${own.length? own.map((x,i)=>`<span class="item"><button data-o="${i}">${esc(x.name)}</button><button class="del" data-d="${i}" aria-label="Poista ${esc(x.name)}">✕</button></span>`).join('') : '<p class="small">Ei vielä tallennettuja kenttiä.</p>'}</div>
-    <h4>Pelin kentät (avautuu kopiona)</h4><div class="list">${LEVELS.map((x,i)=>`<button data-b="${i}">${i+1}. ${esc(x.name)}</button>`).join('')}</div>
-    <div class="rowb"><button id="mC">Sulje</button></div>`);
+  const o=modal(`<h3>${T('ed.openTitle')}</h3>
+    <h4>${T('ed.ownLevels')}</h4><div class="list" id="ownL">${own.length? own.map((x,i)=>`<span class="item"><button data-o="${i}">${esc(x.name)}</button><button class="del" data-d="${i}" aria-label="${esc(T('ed.delAria',{name:x.name}))}">✕</button></span>`).join('') : '<p class="small">'+T('ed.noOwn')+'</p>'}</div>
+    <h4>${T('ed.gameLevels')}</h4><div class="list">${LEVELS.map((x,i)=>`<button data-b="${i}">${i+1}. ${esc(LT(x,'name'))}</button>`).join('')}</div>
+    <div class="rowb"><button id="mC">${T('close')}</button></div>`);
   o.querySelector('#mC').onclick=closeModal;
-  o.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ load(own[+b.dataset.o]); closeModal(); toast('Avattu: '+own[+b.dataset.o].name); });
-  o.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{ const x=clone(LEVELS[+b.dataset.b]); x.name=x.name+' (kopio)'; load(x); closeModal(); });
+  o.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ load(own[+b.dataset.o]); closeModal(); toast(T('ed.opened',{name:own[+b.dataset.o].name})); });
+  o.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{ const x=clone(LEVELS[+b.dataset.b]); x.name=LT(x,'name')+T('ed.copy'); if(x.en) x.en=Object.assign({},x.en,{name:x.en.name+T('ed.copy')}); load(x); closeModal(); });
   o.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.d; const nm=own[i].name;
-    b.parentElement.innerHTML=`<button class="del" data-y="${i}">Poista ${esc(nm)}?</button>`;
-    o.querySelector(`[data-y="${i}"]`).onclick=()=>{ own.splice(i,1); store.set('pp-custom-levels',own); toast('Poistettu: '+nm); closeModal(); $('openBtn').onclick(); }; });
+    b.parentElement.innerHTML=`<button class="del" data-y="${i}">${esc(T('ed.deleteQ',{name:nm}))}</button>`;
+    o.querySelector(`[data-y="${i}"]`).onclick=()=>{ own.splice(i,1); store.set('pp-custom-levels',own); toast(T('ed.deleted',{name:nm})); closeModal(); $('openBtn').onclick(); }; });
 };
 $('saveBtn').onclick=()=>{
   const x=exportLevel(); const own=store.get('pp-custom-levels',[]);
   const i=own.findIndex(o=>o.name===x.name);
   if(i>=0) own[i]=x; else own.push(x);
-  if(store.set('pp-custom-levels',own)) toast(i>=0? 'Tallennettu (korvasi saman nimisen)' : 'Tallennettu omiin kenttiin'); else toast('Tallennus epäonnistui: selaimen tallennustila ei ole käytettävissä');
+  if(store.set('pp-custom-levels',own)) toast(T(i>=0? 'ed.savedOver' : 'ed.saved')); else toast(T('ed.saveFail'));
 };
 $('testBtn').onclick=()=>{
   const p=problems(); if(p.length){ toast(p[0]); return; }
-  if(!store.set('pp-editor-test',exportLevel())){ toast('Testi ei käynnisty: selaimen tallennustila ei ole käytettävissä'); return; }
+  if(!store.set('pp-editor-test',exportLevel())){ toast(T('ed.testFail')); return; }
   location.href='index.html#testi';
 };
 $('textBtn').onclick=()=>{
   const txt=JSON.stringify(exportLevel(),null,1).replace(/\n\s*("[#=~<>^kEP.]{28}")/g,'\n  $1').replace(/\{\n\s*"r"/g,'{"r"');
-  const o=modal(`<h3>Kenttä tekstinä</h3><p class="small">Kopioi teksti ja liitä se Claudelle, niin kenttä voidaan lisätä peliin. Voit myös liittää tähän tekstin ja tuoda kentän.</p>
-    <textarea id="tx" spellcheck="false"></textarea><div class="rowb"><button id="mC">Sulje</button><button id="mImp">Tuo tekstistä</button><button id="mCopy" class="primary">Kopioi</button></div>`);
+  const o=modal(`<h3>${T('ed.textTitle')}</h3><p class="small">${T('ed.textHelp')}</p>
+    <textarea id="tx" spellcheck="false"></textarea><div class="rowb"><button id="mC">${T('close')}</button><button id="mImp">${T('ed.import')}</button><button id="mCopy" class="primary">${T('ed.copyBtn')}</button></div>`);
   const ta=o.querySelector('#tx'); ta.value=txt;
   o.querySelector('#mC').onclick=closeModal;
-  o.querySelector('#mCopy').onclick=()=>{ const done=()=>toast('Kopioitu leikepöydälle'); const fb=()=>{ ta.focus(); ta.select(); toast('Teksti valittu: kopioi se'); };
+  o.querySelector('#mCopy').onclick=()=>{ const done=()=>toast(T('ed.copied')); const fb=()=>{ ta.focus(); ta.select(); toast(T('ed.selected')); };
     try{ navigator.clipboard.writeText(ta.value).then(done,fb); }catch(e){ fb(); } };
   o.querySelector('#mImp').onclick=()=>{ try{ let x=JSON.parse(ta.value); if(Array.isArray(x)) x=x[0];
-      if(!x || !Array.isArray(x.map) || x.map.length!==ROWS || x.map.some(r=>r.length!==COLS) || !Array.isArray(x.pieces)) throw new Error('kartan koon pitää olla 28 × 16');
-      load(x); closeModal(); toast('Kenttä tuotu'); }catch(e){ toast('Tekstiä ei voitu lukea: '+e.message); } };
+      if(!x || !Array.isArray(x.map) || x.map.length!==ROWS || x.map.some(r=>r.length!==COLS) || !Array.isArray(x.pieces)) throw new Error(T('ed.sizeErr'));
+      load(x); closeModal(); toast(T('ed.imported')); }catch(e){ toast(T('ed.importFail',{msg:e.message})); } };
 };
 
 // ---------- tarkistus ----------
 let worker=null;
-function clearResults(){ if(worker){ worker.terminate(); worker=null; $('checkBtn').disabled=false; } $('results').innerHTML='<p class="small">Ei vielä tarkistettu.</p>'; }
+function clearResults(){ if(worker){ worker.terminate(); worker=null; $('checkBtn').disabled=false; } $('results').innerHTML='<p class="small">'+T('ed.notChecked')+'</p>'; }
 function row(cls,mark,text){ return `<div class="row ${cls}"><span class="mark">${mark}</span><span>${text}</span></div>`; }
 $('checkBtn').onclick=()=>{
   const p=problems(); if(p.length){ $('results').innerHTML=p.map(t=>row('bad','✕',t)).join(''); return; }
   clearResults();
   const lvl=exportLevel(), alt=$('altChk').checked;
-  $('results').innerHTML=row('warn','…','Tarkistetaan…'); $('checkBtn').disabled=true;
-  try{ worker=new Worker('js/solver-worker.js'); }catch(e){ $('results').innerHTML=row('bad','✕','Tarkistus ei käynnisty tässä selaimessa.'); $('checkBtn').disabled=false; return; }
+  $('results').innerHTML=row('warn','…',T('ed.checking')); $('checkBtn').disabled=true;
+  try{ worker=new Worker('js/solver-worker.js'); }catch(e){ $('results').innerHTML=row('bad','✕',T('ed.noWorker')); $('checkBtn').disabled=false; return; }
   const t0=Date.now();
   worker.onmessage=e=>{
     const m=e.data;
-    if(m.progress){ $('results').innerHTML=row('warn','…',esc(m.progress)); return; }
+    if(m.progress){ $('results').innerHTML=row('warn','…',esc(T(m.progress.key,m.progress.vars))); return; }
     $('checkBtn').disabled=false; worker.terminate(); worker=null;
-    if(m.error){ $('results').innerHTML=row('bad','✕','Virhe: '+esc(m.error)); return; }
+    if(m.error){ $('results').innerHTML=row('bad','✕',esc(T('ed.error',{msg:m.error}))); return; }
     const r=m.res, out=[];
     const yn=(v,good,txtT,txtF,txtN)=> v===null? row('warn','?',txtN) : (v===good? row('good','✓',v?txtT:txtF) : row('bad','✕',v?txtT:txtF));
-    out.push(yn(r.none,false,'Kenttä menee läpi ilman paloja','Ilman paloja kenttä ei mene läpi','Ilman paloja: ei ratkennut aikarajassa'));
-    if(r.missingSol) out.push(row('warn','!','Aseta jokaiselle palalle ratkaisupaikka, niin ratkaisu tarkistetaan.'));
-    else out.push(yn(r.intended,true,'Ratkaisulla kenttä menee läpi','Ratkaisulla kenttä ei mene läpi','Ratkaisu: ei ratkennut aikarajassa'));
-    if(r.dropOne) r.dropOne.forEach((v,k)=>out.push(yn(v,false,`Pala ${k+1} on turha: kenttä menee läpi ilman sitä`,`Pala ${k+1} tarvitaan`,`Pala ${k+1}: ei ratkennut aikarajassa`)));
-    if(r.alternatives) out.push(row('warn','#',`Toimivia sijoituksia yhdelle palalle: ${r.alternatives.count}`));
-    out.push(`<p class="small">Aikaa kului ${((Date.now()-t0)/1000).toFixed(1)} s.</p>`);
+    out.push(yn(r.none,false,T('ed.r.noneT'),T('ed.r.noneF'),T('ed.r.noneN')));
+    if(r.missingSol) out.push(row('warn','!',T('ed.r.noSol')));
+    else out.push(yn(r.intended,true,T('ed.r.solT'),T('ed.r.solF'),T('ed.r.solN')));
+    if(r.dropOne) r.dropOne.forEach((v,k)=>out.push(yn(v,false,T('ed.r.dropT',{n:k+1}),T('ed.r.dropF',{n:k+1}),T('ed.r.dropN',{n:k+1}))));
+    if(r.alternatives) out.push(row('warn','#',T('ed.r.alt',{n:r.alternatives.count})));
+    out.push(`<p class="small">${T('ed.r.time',{s:((Date.now()-t0)/1000).toFixed(1)})}</p>`);
     $('results').innerHTML=out.join('');
   };
   worker.postMessage({level:lvl, opts:{alternatives:alt, limit:400000}});
 };
 
 // ---------- käynnistys ----------
+applyI18n();
+langButton($('langBtn'),()=>{ renderPieces(); renderGuards(); if(!worker && $('results').querySelector('.row')==null) clearResults(); });
 buildTools();
 const draft=store.get('pp-editor-draft',null);
 load(draft && Array.isArray(draft.map) && draft.map.length===ROWS ? draft : blank());

@@ -5,6 +5,7 @@ const LEVELS = [
 {
   "name": "Ensimmäinen aukko",
   "hint": "Kerää avain ja mene ovelle. Aukko on liian leveä hypätä.",
+  "en": {"name": "The First Gap", "hint": "Collect the key and reach the door. The gap is too wide to jump."},
   "pieces": [{"type": 1, "len": 2}],
   "sol": [{"r": 13, "c": 12}],
   "map": [
@@ -29,6 +30,7 @@ const LEVELS = [
 {
   "name": "Varasto",
   "hint": "Sama pala voi palvella kahta reittiä.",
+  "en": {"name": "Storehouse", "hint": "One piece can serve two routes."},
   "pieces": [{"type": 1, "len": 2}],
   "sol": [{"r": 10, "c": 12}],
   "map": [
@@ -53,6 +55,7 @@ const LEVELS = [
 {
   "name": "Kuilu",
   "hint": "Yli viiden kerroksen pudotus on liikaa.",
+  "en": {"name": "The Shaft", "hint": "A fall of more than five floors is too much."},
   "pieces": [{"type": 1, "len": 2}],
   "sol": [{"r": 9, "c": 8}],
   "map": [
@@ -77,6 +80,7 @@ const LEVELS = [
 {
   "name": "Sulamo",
   "hint": "Sulava silta kantaa vain kerran.",
+  "en": {"name": "Meltworks", "hint": "A melting bridge holds only once."},
   "pieces": [{"type": 3, "len": 2}],
   "sol": [{"r": 10, "c": 22}],
   "map": [
@@ -101,6 +105,7 @@ const LEVELS = [
 {
   "name": "Vartija",
   "hint": "Vartijan ohi ei pääse. Ehkä yli?",
+  "en": {"name": "The Guard", "hint": "You can't get past the guard. Over it, perhaps?"},
   "pieces": [{"type": 1, "len": 1}],
   "sol": [{"r": 10, "c": 13}],
   "guards": [{"r": 13, "c0": 8, "c1": 20, "dir": 1}],
@@ -126,6 +131,7 @@ const LEVELS = [
 {
   "name": "Hihnat",
   "hint": "Liukuhihna kiihdyttää. Hypyn sen päältä kantaa kauas.",
+  "en": {"name": "Conveyors", "hint": "A conveyor speeds you up. A jump from it carries far."},
   "pieces": [{"type": 5, "len": 3}],
   "sol": [{"r": 8, "c": 11, "type": 5}],
   "map": [
@@ -150,6 +156,7 @@ const LEVELS = [
 {
   "name": "Kaksi palaa",
   "hint": "Nyt palaa on kaksi. Kumpaakin tarvitaan.",
+  "en": {"name": "Two Pieces", "hint": "Now there are two pieces. You need both."},
   "pieces": [{"type": 1, "len": 2}, {"type": 1, "len": 2}],
   "sol": [{"r": 10, "c": 16}, {"r": 6, "c": 14}],
   "map": [
@@ -173,7 +180,8 @@ const LEVELS = [
 },
 {
   "name": "Meno ja paluu",
-  "hint": "What goes up must come down.",
+  "hint": "Mikä menee ylös, tulee myös alas.",
+  "en": {"name": "There and Back", "hint": "What goes up must come down."},
   "pieces": [{"type": 1, "len": 1}, {"type": 3, "len": 1}],
   "sol": [{"r": 11, "c": 9}, {"r": 11, "c": 19}],
   "map": [
@@ -198,6 +206,7 @@ const LEVELS = [
 {
   "name": "Vartijat",
   "hint": "Ajoitus ratkaisee. Joskus kannattaa odottaa ylhäällä.",
+  "en": {"name": "Guards", "hint": "Timing is everything. Sometimes it pays to wait up high."},
   "pieces": [{"type": 1, "len": 1}],
   "sol": [{"r": 10, "c": 13}],
   "guards": [{"r": 13, "c0": 9, "c1": 17, "dir": 1}, {"r": 7, "c0": 11, "c1": 19, "dir": -1}],
@@ -223,6 +232,7 @@ const LEVELS = [
 {
   "name": "Temppuhyppy",
   "hint": "Kaikkia avaimia ei saa seisaaltaan. Osa napataan lennosta.",
+  "en": {"name": "Trick Jump", "hint": "Not every key can be reached standing. Some are grabbed mid-air."},
   "pieces": [{"type": 1, "len": 2}, {"type": 1, "len": 1}],
   "sol": [{"r": 11, "c": 13}, {"r": 7, "c": 21}],
   "guards": [{"r": 5, "c0": 19, "c1": 23, "dir": -1}],
@@ -248,6 +258,7 @@ const LEVELS = [
 {
   "name": "Hihnatehdas",
   "hint": "Oma hihna antaa vauhtia leveän aukon yli. Yläkerran hihna vie vasemmalle: hyppää ennen sen päätä.",
+  "en": {"name": "Conveyor Factory", "hint": "Your own conveyor gives you speed over the wide gap. The upper conveyor carries you left: jump before its end."},
   "pieces": [{"type": 5, "len": 3}, {"type": 1, "len": 2}],
   "sol": [{"r": 11, "c": 6, "type": 5}, {"r": 9, "c": 23}],
   "map": [
@@ -272,6 +283,7 @@ const LEVELS = [
 {
   "name": "Kolmen palan kaivos",
   "hint": "Kolme palaa ja vartija. Mikä pala sopii mihinkin kohtaan?",
+  "en": {"name": "Three-Piece Mine", "hint": "Three pieces and a guard. Which piece goes where?"},
   "pieces": [{"type": 1, "len": 2}, {"type": 3, "len": 1}, {"type": 4, "len": 3}],
   "sol": [{"r": 5, "c": 6}, {"r": 11, "c": 8}, {"r": 7, "c": 14, "type": 4}],
   "guards": [{"r": 10, "c0": 12, "c1": 16, "dir": 1}, {"r": 6, "c0": 20, "c1": 24, "dir": -1}],
@@ -297,6 +309,7 @@ const LEVELS = [
 {
   "name": "Ylätaso",
   "hint": "Avainta ei tarvitse hakea ylätasolta. Nappaa se hypyn lakipisteestä.",
+  "en": {"name": "Top Ledge", "hint": "No need to fetch the key from the top ledge. Grab it at the top of your jump."},
   "pieces": [{"type": 1, "len": 2}, {"type": 1, "len": 1}],
   "sol": [{"r": 11, "c": 12}, {"r": 9, "c": 5}],
   "guards": [{"r": 10, "c0": 18, "c1": 26, "dir": -1}, {"r": 6, "c0": 14, "c1": 18, "dir": 1}],
@@ -322,6 +335,7 @@ const LEVELS = [
 {
   "name": "Vartioitu kaivos",
   "hint": "Kolme vartijaa, kolme palaa. Ylimmälle hyllylle ei kannata jäädä.",
+  "en": {"name": "Guarded Mine", "hint": "Three guards, three pieces. Don't stay on the top shelf."},
   "pieces": [{"type": 1, "len": 2}, {"type": 3, "len": 1}, {"type": 5, "len": 3}],
   "sol": [{"r": 11, "c": 7}, {"r": 9, "c": 19}, {"r": 11, "c": 14, "type": 5}],
   "guards": [{"r": 10, "c0": 18, "c1": 26, "dir": -1}, {"r": 6, "c0": 9, "c1": 13, "dir": 1}, {"r": 3, "c0": 18, "c1": 22, "dir": 1}],
@@ -346,7 +360,8 @@ const LEVELS = [
 },
 {
   "name": "Timing is key",
-  "hint": "Possible to solve without using the melting piece.",
+  "hint": "Kentän voi ratkaista käyttämättä sulavaa palaa.",
+  "en": {"name": "Timing is key", "hint": "Possible to solve without using the melting piece."},
   "pieces": [{"type": 3, "len": 1}],
   "sol": [null],
   "guards": [{"r": 6, "c0": 9, "c1": 14, "dir": 1}, {"r": 6, "c0": 19, "c1": 26, "dir": -1}],

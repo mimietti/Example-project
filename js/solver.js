@@ -68,19 +68,19 @@ const PPSolver = (function(){
     const res={};
     const sol=solPieces(L);
     res.missingSol = sol.length!==L.pieces.length || sol.some(s=>!s);
-    report('Ilman paloja…');
+    report({key:'pr.none'});
     res.none = solve(L,[],opts);
     if(!res.missingSol){
-      report('Ratkaisulla…');
+      report({key:'pr.sol'});
       res.intended = solve(L,sol,opts);
       if(sol.length>=2){
         res.dropOne=[];
-        for(let k=0;k<sol.length;k++){ report(`Ilman palaa ${k+1}…`); res.dropOne.push(solve(L,sol.filter((_,j)=>j!==k),opts)); }
+        for(let k=0;k<sol.length;k++){ report({key:'pr.drop',vars:{n:k+1}}); res.dropOne.push(solve(L,sol.filter((_,j)=>j!==k),opts)); }
       }
     }
     if(opts.alternatives && L.pieces.length===1){
       const list=placements(L,L.pieces[0],[]); let n=0, found=[];
-      list.forEach((q,i)=>{ if(i%20===0) report(`Vaihtoehdot ${i}/${list.length}…`); if(solve(L,[q],{limit:opts.limit})===true){ n++; found.push(q); } });
+      list.forEach((q,i)=>{ if(i%20===0) report({key:'pr.alt',vars:{i,n:list.length}}); if(solve(L,[q],{limit:opts.limit})===true){ n++; found.push(q); } });
       res.alternatives={count:n, list:found};
     }
     return res;

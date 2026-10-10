@@ -16,6 +16,7 @@ for i,L in enumerate(levels):
     o=['{']
     o.append(f'  "name": {j(L["name"])},')
     o.append(f'  "hint": {j(L.get("hint",""))},')
+    if L.get('en'): o.append(f'  "en": {j(L["en"])},')
     o.append(f'  "pieces": {j(L["pieces"])},')
     o.append(f'  "sol": {j(L.get("sol",[]))},')
     if L.get('guards'): o.append(f'  "guards": {j(L["guards"])},')

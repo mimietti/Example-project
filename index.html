@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -52,8 +52,10 @@ button:disabled{opacity:.4}
 .piece canvas{width:60px;height:16px}
 .piece .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .piece.placed{border-color:var(--line);background:transparent}
-.piece.placed .lbl::after{content:' · siirrä'}
+
 .piece.active{background:var(--mustard);border-color:var(--mustard);color:#fff}
+.flag{padding:8px 10px;line-height:0}
+.flag svg{display:block;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
 .keys{font-size:14px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
 .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
 #board{display:block;border-radius:6px;box-shadow:0 0 0 1.5px rgba(44,58,65,.12)}
@@ -89,13 +91,14 @@ button:disabled{opacity:.4}
 
 <div class="app" id="app">
   <header>
-    <div class="lvl"><span class="num" id="lnum">Kenttä 1 / 5</span><h1 id="lname"></h1><span class="hint" id="lhint"></span></div>
+    <div class="lvl"><span class="num" id="lnum"></span><h1 id="lname"></h1><span class="hint" id="lhint"></span></div>
     <div class="tools">
       <span class="keys" id="keys"></span>
       <div class="tray" id="tray"></div>
-      <button id="restartBtn" aria-label="Yritä uudelleen">↻</button>
-      <button id="fsBtn" aria-label="Koko näyttö">⛶</button>
-      <button id="menuBtn">Kentät</button>
+      <button id="restartBtn" data-i18n-aria="restart">↻</button>
+      <button id="fsBtn" data-i18n-aria="fullscreen">⛶</button>
+      <button id="langBtn" class="flag"></button>
+      <button id="menuBtn" data-i18n="menu">Levels</button>
     </div>
   </header>
   <div class="stage" id="stage">
@@ -105,19 +108,20 @@ button:disabled{opacity:.4}
   </div>
   <div class="controls" id="controls">
     <div class="pad" id="movePad">
-      <button class="ctl" id="bL" aria-label="Vasemmalle">◀</button>
-      <button class="ctl" id="bR" aria-label="Oikealle">▶</button>
+      <button class="ctl" id="bL" data-i18n-aria="left">◀</button>
+      <button class="ctl" id="bR" data-i18n-aria="right">▶</button>
     </div>
     <div class="placebar" id="placeBar" hidden>
-      <span class="msg" id="placeMsg">Vedä pala paikalleen</span>
-      <button id="removeBtn" hidden>Poista</button>
-      <button id="cancelBtn">Peru</button>
-      <button id="placeBtn" class="primary">Aseta</button>
+      <span class="msg" id="placeMsg"></span>
+      <button id="removeBtn" hidden data-i18n="place.remove">Remove</button>
+      <button id="cancelBtn" data-i18n="place.cancel">Cancel</button>
+      <button id="placeBtn" class="primary" data-i18n="place.ok">Place</button>
     </div>
-    <button class="ctl jump" id="bJ">Hyppy</button>
+    <button class="ctl jump" id="bJ" data-i18n="jump">Jump</button>
   </div>
 </div>
 
+<script src="js/i18n.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/levels.js"></script>
 <script>
@@ -126,7 +130,7 @@ const $=id=>document.getElementById(id);
 const board=$('board'), ctx=board.getContext('2d');
 const C={}; const cs=getComputedStyle(document.documentElement);
 ['paper','ink','oak','sand','fjord','lingon','mustard','mute','line','birch'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());
-const NAME={1:'Lattia',3:'Sulava',4:'Hihna',5:'Hihna'};
+const pname=t=>T('piece.'+t);
 // Manic Miner -henkiset kenttäpaletit: jokaisella luolalla oma lattia-, seinä- ja hihnaväri
 const PALS=[
   {bg:'#F4F1EA',floor:'#C8463B',wall:'#3E6E8E',belt:'#2F8F5B',key:['#D9A12A','#2F8F5B','#3E6E8E','#C8463B']},
@@ -141,7 +145,7 @@ const GUARDC=['#C8463B','#2F5FA8','#7D4BA0','#2F8F5B','#D9893A'];
 let pal=PALS[0];
 function tint(hex,a){ const n=parseInt(hex.slice(1),16), r=n>>16, g=n>>8&255, b=n&255, m=v=>Math.round(v+(255-v)*a);
   return '#'+((1<<24)|(m(r)<<16)|(m(g)<<8)|m(b)).toString(16).slice(1); }
-const CAUSE={fall:'Putosit liian korkealta',spike:'Piikit!',pit:'Putosit kuiluun',guard:'Vartija sai kiinni'};
+
 const TICK=50;
 const BELT_VIS=0.6;      // hihnan nuolten näkyvä nopeus, ruutua sekunnissa
 const UNLOCK_ALL=true;   // testivaihe: kaikki kentät valittavissa
@@ -168,11 +172,14 @@ function loadLevel(i){
   // hylkää tallennetut palat, jotka eivät enää mahdu päivitettyyn kenttään
   placed = placed.map(p=>p).map((p,k)=> p && (p.type=def.pieces[k].type, true) && p.len===def.pieces[k].len && freeFor(def,p,placed.filter((q,j)=>j!==k)) ? p : null);
   edit=null; buildTray(); restart();
-  $('lnum').textContent = TEST? 'Editorin testi' : def.custom? 'Oma kenttä' : `Kenttä ${i+1} / ${NBUILT}`;
-  $('lname').textContent=def.name; $('lhint').textContent=def.hint;
+  headerTexts();
+}
+function headerTexts(){
+  $('lnum').textContent = TEST? T('lvl.test') : def.custom? T('lvl.own') : T('lvl.num',{n:li+1,total:NBUILT});
+  $('lname').textContent=LT(def,'name'); $('lhint').textContent=LT(def,'hint');
 }
 function restart(){
-  landAt=jumpAt=-1e9;
+  landAt=jumpAt=-1e9; exitT=-1;
   world=makeWorld(def,placed); st=newState(world); prev={x:st.x,y:st.y};
   mode='play'; deadT=0; edit=null; hideOverlay(); setPlaceUI(false); updateTray(); updateKeys();
 }
@@ -181,7 +188,7 @@ function rebuildWorld(){
   world=makeWorld(def,placed);
   st.hp=world.cl.map(i=>{ const k=old.hpIdx[i]; return k>=0? oldHp[k] : CRUMBLE_HP; });
 }
-function updateKeys(){ const n=world.keys.length, got=world.keys.filter((_,i)=>st.keys>>i&1).length; $('keys').textContent = n? `Avaimet ${got}/${n}` : ''; }
+function updateKeys(){ const n=world.keys.length, got=world.keys.filter((_,i)=>st.keys>>i&1).length; $('keys').textContent = n? T('keys',{got,n}) : ''; }
 
 // ---------- tray ----------
 function buildTray(){
@@ -198,9 +205,10 @@ function pieceType(k){ return (edit&&edit.k===k)? edit.g.type : (placed[k]? plac
 function updateTray(){
   [...$('tray').children].forEach((b,k)=>{
     b.classList.toggle('placed',!!placed[k]); b.classList.toggle('active',!!edit&&edit.k===k);
-    b.disabled = mode==='won'||mode==='menu';
-    b.querySelector('.lbl').textContent=NAME[pieceType(k)];
-    b.setAttribute('aria-label',(placed[k]?'Siirrä pala: ':'Lisää pala: ')+NAME[pieceType(k)]);
+    b.disabled = mode==='won'||mode==='menu'||mode==='exiting';
+    const nm=pname(pieceType(k))+(def.pieces.length>1? ' '+(k+1) : '');
+    b.querySelector('.lbl').textContent=nm+(placed[k]? T('piece.move') : '');
+    b.setAttribute('aria-label',T(placed[k]?'aria.movePiece':'aria.addPiece')+nm);
     drawIcon(b.querySelector('canvas'),pieceType(k),def.pieces[k].len);
   });
 }
@@ -225,10 +233,10 @@ function ghostValid(){
   for(let k=0;k<g.len;k++){ const c=g.c+k; if(c>=bx0&&c<=bx1&&g.r>=br0&&g.r<=br1) return false; }
   return true;
 }
-function validate(){ const ok=ghostValid(); $('placeBtn').disabled=!ok; $('placeMsg').textContent= !ok? 'Ei mahdu tähän' : placed[edit.k]? 'Siirto aloittaa kentän alusta' : 'Vedä pala paikalleen'; }
+function validate(){ const ok=ghostValid(); $('placeBtn').disabled=!ok; $('placeMsg').textContent= T(!ok? 'place.nofit' : placed[edit.k]? 'place.moveWarn' : 'place.drag'); }
 function commitPlace(){ if(!ghostValid()) return; const moved=!!placed[edit.k]; placed[edit.k]={...edit.g}; persist();
-  if(moved){ restart(); toast('Pala siirretty, aloitetaan alusta'); } else { rebuildWorld(); endPlace(); } }
-function removePiece(){ placed[edit.k]=null; persist(); restart(); toast('Pala poistettu, aloitetaan alusta'); }
+  if(moved){ restart(); toast(T('toast.moved')); } else { rebuildWorld(); endPlace(); } }
+function removePiece(){ placed[edit.k]=null; persist(); restart(); toast(T('toast.removed')); }
 function cancelPlace(){ endPlace(); }
 function endPlace(){ edit=null; mode='play'; setPlaceUI(false); updateTray(); }
 
@@ -262,8 +270,8 @@ tap('fsBtn',()=>{
     if(on){ (d.exitFullscreen||d.webkitExitFullscreen).call(d); return; }
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if(!req) throw 0;
-    const p = req.call(el); if(p && p.catch) p.catch(()=>toast('Koko näyttö ei ole sallittu tässä näkymässä'));
-  }catch(e){ toast('Koko näyttö ei ole sallittu tässä näkymässä'); }
+    const p = req.call(el); if(p && p.catch) p.catch(()=>toast(T('toast.nofs')));
+  }catch(e){ toast(T('toast.nofs')); }
 });
 tap('restartBtn',restart); tap('menuBtn',showMenu);
 tap('placeBtn',commitPlace); tap('cancelBtn',cancelPlace); tap('removeBtn',removePiece);
@@ -285,14 +293,14 @@ function showCard(html){ const o=$('overlay'); o.innerHTML='<div class="card">'+
 function toast(t){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,1300); }
 function showWin(){
   if(TEST){
-    const o=showCard(`<h2>${esc(def.name)} läpäisty</h2><p>Testikenttä on pelattavissa läpi.</p><div class="row"><button id="again">Uudelleen</button><button id="ed" class="primary">Takaisin editoriin</button></div>`);
+    const o=showCard(`<h2>${esc(T('win.test.title',{name:LT(def,'name')}))}</h2><p>${T('win.test.text')}</p><div class="row"><button id="again">${T('again')}</button><button id="ed" class="primary">${T('backEditor')}</button></div>`);
     o.querySelector('#again').onclick=restart; o.querySelector('#ed').onclick=()=>{ location.href='editor.html'; };
     return;
   }
   const last=li===GL.length-1;
   const o=showCard(last
-    ? `<h2>Kaikki kentät läpäisty</h2><p>Valmiit kentät on ratkaistu. Tee omia kenttäeditorissa.</p><div class="row"><button id="again">Pelaa uudelleen</button><button id="lv" class="primary">Kentät</button></div>`
-    : `<h2>${esc(def.name)} läpäisty</h2><p>Seuraavaksi: ${esc(GL[li+1].name)}</p><div class="row"><button id="again">Uudelleen</button><button id="next" class="primary">Seuraava kenttä</button></div>`);
+    ? `<h2>${T('win.all.title')}</h2><p>${T('win.all.text')}</p><div class="row"><button id="again">${T('playAgain')}</button><button id="lv" class="primary">${T('menu')}</button></div>`
+    : `<h2>${esc(T('win.title',{name:LT(def,'name')}))}</h2><p>${esc(T('win.next',{name:LT(GL[li+1],'name')}))}</p><div class="row"><button id="again">${T('again')}</button><button id="next" class="primary">${T('nextLevel')}</button></div>`);
   o.querySelector('#again').onclick=restart;
   if(last) o.querySelector('#lv').onclick=showMenu; else o.querySelector('#next').onclick=()=>loadLevel(li+1);
 }
@@ -301,18 +309,21 @@ function showMenu(){
   if(TEST){ location.href='editor.html'; return; }
   if(mode==='place') cancelPlace();
   const prevMode=mode; mode='menu'; updateTray();
-  let b=''; for(let i=0;i<NBUILT;i++){ const L=GL[i]; b+=`<button data-i="${i}" ${(!UNLOCK_ALL&&i>progress)?'disabled':''} class="${i<progress?'done':''}" aria-label="${esc(L.name)}">${i+1}</button>`; }
-  let own=''; for(let i=NBUILT;i<GL.length;i++) own+=`<button data-i="${i}" class="own">${esc(GL[i].name)}</button>`;
-  const o=showCard(`<h2>Kentät</h2><p>${UNLOCK_ALL? 'Testivaihe: kaikki kentät ovat valittavissa. Läpäistyt on merkitty.' : 'Avoinna '+Math.min(progress+1,NBUILT)+' / '+NBUILT+'.'} Asettamasi palat säilyvät kentässä, kunnes siirrät tai poistat ne.</p><div class="levels">${b}</div>`+
-    (own? `<h3>Omat kentät</h3><div class="ownlist">${own}</div>` : '')+
-    `<div class="row"><button id="close">Sulje</button><a class="btnlink" href="editor.html">Kenttäeditori</a></div>`);
+  let b=''; for(let i=0;i<NBUILT;i++){ const L=GL[i]; b+=`<button data-i="${i}" ${(!UNLOCK_ALL&&i>progress)?'disabled':''} class="${i<progress?'done':''}" aria-label="${esc(LT(L,'name'))}" title="${esc(LT(L,'name'))}">${i+1}</button>`; }
+  let own=''; for(let i=NBUILT;i<GL.length;i++) own+=`<button data-i="${i}" class="own">${esc(LT(GL[i],'name'))}</button>`;
+  const o=showCard(`<h2>${T('menu.title')}</h2><p>${UNLOCK_ALL? T('menu.unlocked') : T('menu.open',{n:Math.min(progress+1,NBUILT),total:NBUILT})} ${T('menu.keep')}</p><div class="levels">${b}</div>`+
+    (own? `<h3>${T('menu.own')}</h3><div class="ownlist">${own}</div>` : '')+
+    `<div class="row"><button id="close">${T('close')}</button><a class="btnlink" href="editor.html">${T('editor')}</a></div>`);
   o.querySelectorAll('.levels button, .ownlist button').forEach(el=>el.onclick=()=>loadLevel(+el.dataset.i));
   o.querySelector('#close').onclick=()=>{ hideOverlay(); mode = prevMode==='menu'?'play':prevMode; updateTray(); if(mode==='won') showWin(); };
 }
 
 // ---------- loop ----------
 let acc=0,last=performance.now();
-let landAt=-1e9, jumpAt=-1e9, landHard=0;
+let landAt=-1e9, jumpAt=-1e9, landHard=0, exitT=-1;
+// oven avaus: avain lentää lukkoon, kääntyy, ovi aukeaa, hahmo astuu sisään
+const EX={fly:450, turn:750, open:1150, enter:1650, end:1900};
+const clamp01=v=>Math.max(0,Math.min(1,v)), ease=v=>v<.5?2*v*v:1-Math.pow(-2*v+2,2)/2;
 function tick(){
   prev={x:st.x,y:st.y}; const k0=st.keys, m0=st.m, pk=st.peak;
   const dir=(held.R?1:0)-(held.L?1:0);
@@ -320,13 +331,14 @@ function tick(){
   if(m0!==0 && st.m===0){ landAt=frame; landHard=Math.min(1,(st.y-pk)/MAXFALL); }
   if(m0===0 && st.m===1){ jumpAt=frame; }
   if(st.keys!==k0) updateKeys();
-  if(st.dead){ mode='dead'; deadT=0; toast(CAUSE[st.cause]||'Hups'); }
-  else if(st.won){ mode='won'; if(!TEST && !def.custom && li+1>progress) progress=li+1; persist(); updateTray(); showWin(); }
+  if(st.dead){ mode='dead'; deadT=0; toast(T('cause.'+(st.cause||'x'))); }
+  else if(st.won){ mode='exiting'; exitT=0; held.L=held.R=held.J=false; if(!TEST && !def.custom && li+1>progress) progress=li+1; persist(); updateTray(); }
 }
 function loop(now){
   const dt=Math.min(200,now-last); last=now; frame+=dt;
   if(mode==='play'){ acc+=dt; while(acc>=TICK && mode==='play'){ acc-=TICK; tick(); } } else acc=0;
   if(mode==='dead'){ deadT+=dt; if(deadT>900) restart(); }
+  if(mode==='exiting'){ exitT+=dt; if(exitT>=EX.end){ mode='won'; showWin(); } }
   draw(mode==='play'? acc/TICK : 1);
   requestAnimationFrame(loop);
 }
@@ -383,9 +395,20 @@ function drawTile(t,r,c,hp,alpha,isMine,run){
     for(let k=0;k<n;k++){ ctx.fillStyle=C.ink; ctx.beginPath(); ctx.moveTo(x+k*w,y+s); ctx.lineTo(x+k*w+w/2,y+s*.48); ctx.lineTo(x+(k+1)*w,y+s); ctx.fill();
       ctx.fillStyle=C.lingon; ctx.beginPath(); ctx.moveTo(x+k*w+w*.32,y+s*.66); ctx.lineTo(x+k*w+w/2,y+s*.48); ctx.lineTo(x+k*w+w*.68,y+s*.66); ctx.fill(); } }
   else if(t===EXIT){ const open=st.keys===world.allKeys, dx=x+s*.1, dw=s*.8, dy=y-s*.85, dh=s*1.85;
-    ctx.fillStyle=open? C.fjord : C.line; ctx.beginPath(); ctx.moveTo(dx,dy+dh); ctx.lineTo(dx,dy+dw/2); ctx.arc(dx+dw/2,dy+dw/2,dw/2,Math.PI,0); ctx.lineTo(dx+dw,dy+dh); ctx.fill();
+    const arch=()=>{ ctx.beginPath(); ctx.moveTo(dx,dy+dh); ctx.lineTo(dx,dy+dw/2); ctx.arc(dx+dw/2,dy+dw/2,dw/2,Math.PI,0); ctx.lineTo(dx+dw,dy+dh); ctx.closePath(); };
+    const op = exitT<0? 0 : ease(clamp01((exitT-EX.turn)/(EX.open-EX.turn)));
+    if(op>0){
+      ctx.fillStyle=C.ink; arch(); ctx.fill();                                   // avautuva aukko
+      ctx.save(); arch(); ctx.clip();                                            // ovilevy kääntyy saranoilta vasemmalle
+      ctx.fillStyle=C.fjord; ctx.fillRect(dx, dy, dw*(1-op)+.5, dh);
+      ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(dx+dw*(1-op)-2, dy, 2, dh);
+      ctx.restore();
+      ctx.strokeStyle=C.fjord; ctx.lineWidth=2; arch(); ctx.stroke();
+      ctx.globalAlpha=1; return;
+    }
+    ctx.fillStyle=open? C.fjord : C.line; arch(); ctx.fill();
     ctx.fillStyle= open? '#fff' : C.mute; ctx.beginPath(); ctx.arc(dx+dw/2,dy+dw*.6,dw*.18,0,7); ctx.fill();
-    if(open){ ctx.globalAlpha=alpha*(.3+.3*Math.sin(frame/200)); ctx.strokeStyle=pal.key[0]; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(dx+dw/2,dy+dw/2,dw/2+4,Math.PI,0); ctx.stroke(); } }
+    if(open && exitT<0){ ctx.globalAlpha=alpha*(.3+.3*Math.sin(frame/200)); ctx.strokeStyle=pal.key[0]; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(dx+dw/2,dy+dw/2,dw/2+4,Math.PI,0); ctx.stroke(); } }
   ctx.globalAlpha=1;
 }
 function drawKey(r,c,i){
@@ -443,9 +466,32 @@ function draw(alpha){
     ctx.strokeStyle= ok? C.ink : C.lingon; ctx.lineWidth=2; ctx.setLineDash([5,4]);
     rr(g.c*ts+1,g.r*ts+1,g.len*ts-2,ts-2,6); ctx.stroke(); ctx.setLineDash([]);
   }
-  const ix=prev.x+(st.x-prev.x)*alpha, iy=prev.y+(st.y-prev.y)*alpha;
+  // palojen numerot, kun paloja on useampi
+  if(def.pieces.length>1) placed.forEach((p,k)=>{ if(!p || (edit&&edit.k===k)) return;
+    const cx=(p.c+p.len/2)*ts, cy=p.r*ts-ts*.22; ctx.fillStyle=pal.floor; ctx.beginPath(); ctx.arc(cx,cy,ts*.24,0,7); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font=`600 ${Math.round(ts*.32)}px Jost, system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(k+1),cx,cy+1); });
+  let ix=prev.x+(st.x-prev.x)*alpha, iy=prev.y+(st.y-prev.y)*alpha;
   if(mode==='dead') ctx.globalAlpha=(Math.floor(deadT/100)%2)? .25 : 1;
-  drawPlayer(ix,iy); ctx.globalAlpha=1;
+  let pa=1, ps=1;
+  if(exitT>=0){ const e=clamp01((exitT-EX.open)/(EX.enter-EX.open)); pa=1-e; ps=1-e*.35; if(world.exit) ix += (world.exit.c*U - ix)*ease(e); }
+  if(pa>0){ ctx.save(); ctx.globalAlpha*=pa;
+    if(ps<1){ const s=ts/U, fx=ix*s+ts/2, fy=iy*s; ctx.translate(fx,fy); ctx.scale(ps,ps); ctx.translate(-fx,-fy); }
+    drawPlayer(ix,iy); ctx.restore(); }
+  ctx.globalAlpha=1;
+  if(exitT>=0 && exitT<EX.turn+80 && world.exit) drawExitKey(ix,iy);
+}
+function drawExitKey(ix,iy){
+  const s=ts/U, E=world.exit, dx=E.c*ts+ts*.1, dw=ts*.8, dy=E.r*ts-ts*.85;
+  const hx=dx+dw/2, hy=dy+dw*.6;                          // avaimenreikä
+  const px=ix*s+ts*.5, py=iy*s-ts*1.1;                    // hahmon käsi
+  const f=ease(clamp01(exitT/EX.fly));
+  const x=px+(hx-px)*f, y=py+(hy-py)*f-Math.sin(f*Math.PI)*ts*.5;
+  const rot=clamp01((exitT-EX.fly)/(EX.turn-EX.fly))*Math.PI/2;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+  ctx.strokeStyle=pal.key[0]; ctx.lineWidth=Math.max(2,ts*.1); ctx.lineCap='round';
+  ctx.beginPath(); ctx.arc(-ts*.3,0,ts*.14,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-ts*.16,0); ctx.lineTo(ts*.1,0); ctx.moveTo(0,0); ctx.lineTo(0,ts*.12); ctx.stroke();
+  ctx.restore();
 }
 function drawIcon(c,type,n){
   const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
@@ -460,8 +506,11 @@ function drawIcon(c,type,n){
 }
 
 function start(data){
+  applyI18n();
+  langButton($('langBtn'),()=>{ if(mode==='menu'){ hideOverlay(); mode='play'; showMenu(); } else if(mode==='won'){ showWin(); }
+    if(def){ headerTexts(); updateTray(); updateKeys(); if(edit) validate(); } });
   resize();
-  if(TEST){ $('menuBtn').textContent='Editoriin'; }
+  if(TEST){ $('menuBtn').dataset.i18n='toEditor'; $('menuBtn').textContent=T('toEditor'); }
   loadLevel(TEST? 0 : Math.min(data && data.level!=null ? data.level : progress, NBUILT-1));
   requestAnimationFrame(t=>{ last=t; loop(t); });
 }
