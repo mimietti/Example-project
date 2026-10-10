@@ -259,6 +259,8 @@ function cellAt(e){ const b=cv.getBoundingClientRect(); const c=Math.floor((e.cl
   return (r<0||r>=ROWS||c<0||c>=COLS)? null : {r,c}; }
 function paint(p){
   if(!p) return;
+  const edge = p.r===0||p.r===ROWS-1||p.c===0||p.c===COLS-1;
+  if(edge && 'PEkG'.includes(tool)){ toast('Reunaruutuihin voi piirtää vain laattoja'); return; }
   const cur=L.map[p.r][p.c];
   if(tool==='P'||tool==='E'){ L.map=L.map.map(row=>row.split(tool).join('.')); }
   if(cur===tool) return;
@@ -336,8 +338,9 @@ function problems(){
   const m=L.map.join(''); const out=[];
   if(!m.includes('P')) out.push('Kentästä puuttuu aloituspaikka.');
   if(!m.includes('E')) out.push('Kentästä puuttuu ovi.');
-  const pr=L.map.findIndex(r=>r.includes('P'));
-  if(pr===0) out.push('Aloituspaikka ei voi olla ylimmällä rivillä.');
+  const at=ch=>{ for(let r=0;r<ROWS;r++){ const c=L.map[r].indexOf(ch); if(c>=0) return {r,c}; } return null; };
+  for(const [ch,nm] of [['P','Aloituspaikka'],['E','Ovi']]){ const q=at(ch);
+    if(q && (q.r===0||q.r===ROWS-1||q.c===0||q.c===COLS-1)) out.push(nm+' on reunaseinässä (rivi '+q.r+', sarake '+q.c+'). Siirrä se kentän sisälle.'); }
   return out;
 }
 
