@@ -173,7 +173,7 @@ const LEVELS = [
 },
 {
   "name": "Meno ja paluu",
-  "hint": "Sulava pala kantaa vain kerran. Mitä aukkoa ylität kahdesti?",
+  "hint": "What goes up must come down.",
   "pieces": [{"type": 1, "len": 1}, {"type": 3, "len": 1}],
   "sol": [{"r": 11, "c": 9}, {"r": 11, "c": 19}],
   "map": [
