@@ -346,7 +346,7 @@ const LEVELS = [
 },
 {
   "name": "Timing is key",
-  "hint": "Possible to solve without using the floor piece.",
+  "hint": "Possible to solve without using the melting piece.",
   "pieces": [{"type": 3, "len": 1}],
   "sol": [null],
   "guards": [{"r": 6, "c0": 9, "c1": 14, "dir": 1}, {"r": 6, "c0": 19, "c1": 26, "dir": -1}],
