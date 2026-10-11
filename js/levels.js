@@ -311,7 +311,7 @@ const LEVELS = [
   "hint": "Avainta ei tarvitse hakea ylätasolta. Nappaa se hypyn lakipisteestä.",
   "en": {"name": "Top Ledge", "hint": "No need to fetch the key from the top ledge. Grab it at the top of your jump."},
   "pieces": [{"type": 1, "len": 2}],
-  "sol": [{"r": 11, "c": 12}],
+  "sol": [{"r": 9, "c": 9}],
   "guards": [{"r": 10, "c0": 18, "c1": 26, "dir": -1}, {"r": 6, "c0": 14, "c1": 18, "dir": 1}],
   "map": [
     "############################",
